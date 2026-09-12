@@ -183,6 +183,20 @@ async function startApp(session) {
       .then((n) => { if (n) console.info(`Purged ${n} card(s) from trash.`); })
       .catch((e) => console.warn('Trash purge failed:', e.message));
   } catch (err) {
+    // A stored session that the server no longer accepts — an expired refresh
+    // token after a long gap is the normal cause. Stranding the user on the
+    // app shell behind a Retry button they can never satisfy is the wrong
+    // answer; drop them back to sign-in and say why.
+    if (isAuthFailure(err)) {
+      starting = false;
+      await signOut().catch(() => {});
+      stopApp();
+      const msg = $('#signin-msg');
+      msg.textContent = 'Your session expired. Send yourself a new link to sign back in.';
+      msg.className = 'signin-msg is-err';
+      return;
+    }
+
     showScreen('app');
     const panel = $('#panel-drill');
     clear(panel);
@@ -191,6 +205,17 @@ async function startApp(session) {
   } finally {
     starting = false;
   }
+}
+
+/** Does this error mean the session is no longer good? */
+function isAuthFailure(err) {
+  const msg = String(err?.message ?? '').toLowerCase();
+  return msg.includes('not signed in')
+    || msg.includes('jwt')
+    || msg.includes('token')
+    || msg.includes('session')
+    || err?.status === 401
+    || err?.status === 403;
 }
 
 function stopApp() {
