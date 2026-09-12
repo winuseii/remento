@@ -370,3 +370,63 @@ button { cursor: pointer; }
   .card-panel { padding: var(--sp-4); border-radius: var(--r); }
   .toasts { bottom: calc(var(--tap) + var(--sp-4) + env(safe-area-inset-bottom)); }
 }
+
+/* ── settings ───────────────────────────────────────────────────────────── */
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-4); margin-bottom: var(--sp-4);
+}
+.panel-head .panel-title { margin: 0; }
+
+.hint { color: var(--tx-3); font-size: 12px; line-height: 1.5; }
+
+.settings-grid {
+  display: grid; gap: var(--sp-4);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  align-items: start;
+}
+.settings-actions { grid-column: 1 / -1; display: flex; justify-content: flex-start; }
+
+/* The structure tree. Dense, mono, tabular — an instrument, not a document. */
+.tree { display: grid; gap: var(--sp-4); }
+.tree-sem { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.tree-sub { border-top: 1px solid var(--line); }
+.tree-units { border-top: 1px dashed var(--line); }
+
+.tree-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  min-height: var(--tap);
+}
+.tree-row-sem { background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.tree-row-sem .tree-name {
+  font-family: var(--mono); font-size: 12px;
+  letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx);
+}
+.tree-sub > .tree-row { padding-left: var(--sp-4); }
+.tree-sub > .tree-row .tree-name { font-size: 15px; }
+.tree-row-unit { padding-left: var(--sp-6); min-height: 38px; }
+.tree-row-unit .tree-name { font-size: 13px; color: var(--tx-2); }
+.tree-row:hover { background: var(--surface-2); }
+
+.tree-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.tree-no { color: var(--tx-3); font-size: 11px; flex: none; width: 2ch; }
+.tree-code {
+  flex: none; font-size: 11px; color: var(--tx-3);
+  border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 1px 6px;
+}
+.tree-meta { flex: none; font-size: 11px; color: var(--tx-3); }
+.tree-meta.is-short { color: var(--g-hard); }
+.tree-empty {
+  padding: var(--sp-2) var(--sp-6); color: var(--tx-3);
+  font-size: 12px; font-family: var(--mono);
+}
+.tree .row-actions { flex: none; opacity: .55; transition: opacity .12s; }
+.tree-row:hover .row-actions, .tree-row:focus-within .row-actions { opacity: 1; }
+
+@media (max-width: 720px) {
+  .tree .row-actions { opacity: 1; }
+  .tree-row { flex-wrap: wrap; }
+  .tree-name { flex-basis: 100%; }
+  .tree-sub > .tree-row, .tree-row-unit { padding-left: var(--sp-3); }
+}

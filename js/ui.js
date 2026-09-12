@@ -246,28 +246,33 @@ export function confirmDialog({ title = 'Are you sure?', message, confirmLabel =
   });
 }
 
-/** A prompt dialog returning the typed string, or null. */
+/**
+ * A prompt dialog.
+ * Resolves to the trimmed string when confirmed — possibly '' — and to null
+ * when cancelled. Callers need that difference to tell "clear this field"
+ * from "I changed my mind".
+ */
 export function promptDialog({ title, label, value = '', placeholder = '', confirmLabel = 'Save' }) {
   return new Promise((resolve) => {
     const input = el('input', { class: 'input', value, placeholder, type: 'text' });
     const body = el('div', { class: 'field' },
       label ? el('span', { class: 'label' }, label) : null, input);
 
+    let answer = null;
     const dialog = openModal({
       title, body,
       actions: [
-        { label: 'Cancel', value: null },
+        { label: 'Cancel', value: 'cancel' },
         { label: confirmLabel, value: 'ok', primary: true },
       ],
-      onDone: (v) => resolve(v === 'ok' ? (input.value.trim() || null) : null),
+      onDone: (v) => resolve(v === 'ok' ? input.value.trim() : answer),
     });
 
     input.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
       e.preventDefault();
-      const typed = input.value.trim() || null;
-      dialog.close();          // resolves with null…
-      resolve(typed);          // …but this already settled the promise
+      answer = input.value.trim();   // Enter confirms, same as the button
+      dialog.close();
     });
   });
 }
