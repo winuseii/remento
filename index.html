@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A0B0D">
+<meta name="description" content="Spaced-repetition flashcards for coursework.">
+<title>Remento</title>
+
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+<!-- Type. Stylesheets only; tokens.css declares fallbacks if these never arrive. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+
+<!-- KaTeX stylesheet. The renderer itself is imported as an ES module in js/ui.js. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0/dist/katex.min.css">
+
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ── boot ──────────────────────────────────────────────────────────────── -->
+<div id="boot" class="boot">
+  <div class="boot-mark">REMENTO</div>
+  <div class="spinner" aria-label="Loading"></div>
+</div>
+
+<!-- ── sign in ───────────────────────────────────────────────────────────── -->
+<!-- The whole app is behind this. No session, nothing else renders. -->
+<main id="signin" class="signin" hidden>
+  <div class="signin-panel">
+    <h1 class="signin-mark">Remento</h1>
+    <p class="signin-sub">Spaced repetition for coursework.</p>
+
+    <form id="signin-form" class="signin-form" novalidate>
+      <label class="label" for="signin-email">Email</label>
+      <input id="signin-email" class="input" type="email" name="email"
+             autocomplete="email" inputmode="email" required
+             placeholder="you@example.com" spellcheck="false">
+      <button id="signin-btn" class="btn btn-primary btn-block" type="submit">
+        Send magic link
+      </button>
+    </form>
+
+    <p id="signin-msg" class="signin-msg" role="status" aria-live="polite"></p>
+    <p class="signin-foot">
+      No password. A one-time link arrives by email and signs this device in
+      until you sign out.
+    </p>
+  </div>
+</main>
+
+<!-- ── app ───────────────────────────────────────────────────────────────── -->
+<div id="app" class="app" hidden>
+
+  <header class="topbar">
+    <div class="topbar-in">
+      <div class="brand">REMENTO</div>
+      <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
+        <button class="tab" role="tab" data-tab="drill"    aria-selected="true">Drill</button>
+        <button class="tab" role="tab" data-tab="browse"   aria-selected="false">Browse</button>
+        <button class="tab" role="tab" data-tab="import"   aria-selected="false">Import</button>
+        <button class="tab" role="tab" data-tab="stats"    aria-selected="false">Stats</button>
+        <button class="tab tab-icon" role="tab" data-tab="settings" aria-selected="false"
+                aria-label="Settings" title="Settings">&#9881;</button>
+      </nav>
+      <div class="topbar-right">
+        <label class="edit-toggle" title="Edit mode (e)">
+          <input type="checkbox" id="edit-toggle">
+          <span class="edit-toggle-track" aria-hidden="true"></span>
+          <span class="edit-toggle-label">EDIT</span>
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <main class="panels">
+    <section class="panel" id="panel-drill"    role="tabpanel" aria-label="Drill"></section>
+    <section class="panel" id="panel-browse"   role="tabpanel" aria-label="Browse" hidden></section>
+    <section class="panel" id="panel-import"   role="tabpanel" aria-label="Import" hidden></section>
+    <section class="panel" id="panel-stats"    role="tabpanel" aria-label="Stats" hidden></section>
+    <section class="panel" id="panel-settings" role="tabpanel" aria-label="Settings" hidden></section>
+  </main>
+
+  <!-- Phone: the same tabs, bottom-anchored, where the thumb already is. -->
+  <nav class="tabbar" id="tabbar" aria-label="Sections">
+    <button class="tabbar-btn" data-tab="drill"    aria-selected="true">Drill</button>
+    <button class="tabbar-btn" data-tab="browse"   aria-selected="false">Browse</button>
+    <button class="tabbar-btn" data-tab="import"   aria-selected="false">Import</button>
+    <button class="tabbar-btn" data-tab="stats"    aria-selected="false">Stats</button>
+    <button class="tabbar-btn" data-tab="settings" aria-selected="false">&#9881;</button>
+  </nav>
+</div>
+
+<!-- ── overlays ──────────────────────────────────────────────────────────── -->
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+<div id="modal-root" class="modal-root" hidden></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
