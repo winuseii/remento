@@ -6,7 +6,7 @@ import {
   loadingBlock, errorBlock, fmtInterval, fmtDue,
 } from '../ui.js';
 import * as db from '../db.js';
-import { frontTextOf } from '../importer.js';
+import { frontTextOf, CARD_TYPES } from '../importer.js';
 import { renderFront, renderBack } from '../card-render.js';
 import { editCard } from '../card-editor.js';
 import { isLeech } from '../scheduler.js';
@@ -149,8 +149,7 @@ export async function render(panel, ctx) {
 
     const typeSel = el('select', { class: 'select' },
       el('option', { value: '' }, 'All types'),
-      ['qa', 'formula', 'list', 'cloze', 'numerical', 'image'].map(
-        (t2) => el('option', { value: t2, selected: t2 === q.type }, t2)),
+      CARD_TYPES.map((t2) => el('option', { value: t2, selected: t2 === q.type }, t2)),
     );
     typeSel.addEventListener('change', () => { q.type = typeSel.value; q.page = 0; load(); });
 

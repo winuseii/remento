@@ -3,8 +3,8 @@
 
 import { supabase } from './supabase.js';
 
-/** Where the magic link should come back to. Works on Pages and on file/localhost. */
-export function redirectTo() {
+/** Where the magic link should come back to. Works on Pages and on localhost. */
+function redirectTo() {
   const { origin, pathname } = window.location;
   return origin + pathname.replace(/index\.html$/, '');
 }

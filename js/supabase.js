@@ -20,13 +20,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   },
 });
 
-/** The signed-in user, or null. */
-export async function currentUser() {
-  const { data, error } = await supabase.auth.getUser();
-  if (error) return null;
-  return data.user ?? null;
-}
-
 /**
  * Unwrap a PostgREST response, throwing the real message.
  * Silent failure is the enemy: this app is used the night before an exam.

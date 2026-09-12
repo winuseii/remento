@@ -344,12 +344,12 @@ function moveButtons(item, siblings, apply) {
   ];
 }
 
-export function byPosition(a, b) {
+function byPosition(a, b) {
   return (a.position ?? 0) - (b.position ?? 0) || String(a.name ?? a.label).localeCompare(String(b.name ?? b.label));
 }
 
 /** 'Semester 3' -> 's3-…'; good enough for a unique-per-user key. */
-export function slugify(s) {
+function slugify(s) {
   const base = String(s).toLowerCase().trim()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return base || `x${Date.now().toString(36)}`;

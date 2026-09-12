@@ -863,3 +863,28 @@ button { cursor: pointer; }
   .cov-row { grid-template-columns: 2.2ch 1fr 64px 4ch; gap: var(--sp-2); font-size: 12px; }
   .coverage .cov-row:has(.cov-sub) { grid-template-columns: 1fr 60px 5ch 4ch; }
 }
+
+/* ── image picker (card editor) ─────────────────────────────────────────── */
+.img-picker { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
+.img-thumb {
+  position: relative; width: 108px; height: 108px;
+  border: 1px solid var(--line-2); border-radius: var(--r); overflow: hidden;
+  background: var(--bg);
+}
+.img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.img-thumb.is-pending { border-color: var(--g-good); border-style: dashed; }
+.img-x {
+  position: absolute; top: 4px; right: 4px;
+  width: 24px; height: 24px; line-height: 1;
+  border: 1px solid var(--line-2); border-radius: 50%;
+  background: var(--bg); color: var(--tx-2); font-size: 14px;
+  display: grid; place-items: center;
+}
+.img-x:hover { color: var(--g-again); border-color: var(--g-again); }
+.img-tag {
+  position: absolute; bottom: 4px; left: 4px;
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: var(--ls-label); text-transform: uppercase;
+  color: var(--g-good); background: var(--bg);
+  padding: 1px 5px; border-radius: var(--r-sm);
+}

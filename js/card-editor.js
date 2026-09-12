@@ -1,9 +1,10 @@
 // The card editor, shared by Drill (the pencil, mid-review) and Browse.
 // Behind the Edit toggle in both places.
 
-import { el, openModal, toast, toastError } from './ui.js';
+import { el, openModal, toast, toastError, clear } from './ui.js';
 import * as db from './db.js';
 import { countBlanks } from './importer.js';
+import { uploadImage, signedImageUrl, deleteImages } from './images.js';
 
 /** The text fields each card type actually has, in the order they are shown. */
 const FIELDS = {
@@ -94,6 +95,13 @@ export function editCard(card, { structure } = {}) {
       body.append(el('label', { class: 'field' }, el('span', { class: 'label' }, 'Unit'), unitSel));
     }
 
+    // ── images ────────────────────────────────────────────────────────────
+    // Any card type can carry images; `image` as a type just means the picture
+    // is the question. Files are compressed and uploaded on save, not on pick,
+    // so cancelling the editor leaves nothing behind in the bucket.
+    const images = imagePicker(card);
+    body.append(el('hr', { class: 'divider' }), images.node);
+
     const status = el('p', { class: 'hint editor-status' });
 
     openModal({
@@ -105,6 +113,7 @@ export function editCard(card, { structure } = {}) {
         if (v !== 'save') { resolve(null); return; }
         try {
           const patch = buildPatch(card, inputs, unitSel);
+          patch.images = await images.commit(card.id);
           const saved = await db.updateCard(card.id, patch);
           toast('Card saved.', 'ok');
           resolve(saved);
@@ -115,6 +124,95 @@ export function editCard(card, { structure } = {}) {
       },
     });
   });
+}
+
+/**
+ * Attach and remove card images.
+ *
+ * Nothing touches the network until commit(): picked files are held, removals
+ * are marked, and both are applied on save. Cancelling the editor therefore
+ * leaves the bucket exactly as it was.
+ */
+function imagePicker(card) {
+  const existing = (card.images ?? [])
+    .map((i) => (typeof i === 'string' ? { path: i } : i))
+    .filter((i) => i?.path);
+
+  const keep = new Set(existing.map((i) => i.path));
+  const pending = [];                    // File objects, not yet compressed
+  const strip = el('div', { class: 'img-picker' });
+
+  const input = el('input', {
+    type: 'file', accept: 'image/*', multiple: true, class: 'visually-hidden',
+  });
+  const add = el('button', { class: 'btn btn-sm', type: 'button' }, '+ Add image');
+  add.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => {
+    for (const f of input.files ?? []) pending.push(f);
+    input.value = '';
+    redraw();
+  });
+
+  function redraw() {
+    clear(strip);
+
+    for (const img of existing) {
+      if (!keep.has(img.path)) continue;
+      const thumb = el('div', { class: 'img-thumb' });
+      const pic = el('img', { alt: '', loading: 'lazy' });
+      signedImageUrl(img.path)
+        .then((url) => { pic.src = url; })
+        .catch(() => { thumb.append(el('span', { class: 'img-missing' }, 'unavailable')); });
+      thumb.append(pic, el('button', {
+        class: 'img-x', type: 'button', title: 'Remove',
+        onclick: () => { keep.delete(img.path); redraw(); },
+      }, '×'));
+      strip.append(thumb);
+    }
+
+    pending.forEach((file, i) => {
+      const thumb = el('div', { class: 'img-thumb is-pending' });
+      const pic = el('img', { alt: '', src: URL.createObjectURL(file) });
+      thumb.append(pic,
+        el('span', { class: 'img-tag' }, 'new'),
+        el('button', {
+          class: 'img-x', type: 'button', title: 'Remove',
+          onclick: () => { pending.splice(i, 1); redraw(); },
+        }, '×'));
+      strip.append(thumb);
+    });
+
+    if (!strip.childElementCount) {
+      strip.append(el('p', { class: 'hint' }, 'No images. Screenshots are compressed to WebP, longest edge 1600px, before they leave this device.'));
+    }
+  }
+  redraw();
+
+  return {
+    node: el('div', { class: 'field' },
+      el('span', { class: 'label' }, 'Images'),
+      strip,
+      el('div', { class: 'row-actions' }, add, input),
+    ),
+
+    /** Upload the new files, drop the removed ones, return the new column. */
+    async commit(cardId) {
+      const kept = existing.filter((i) => keep.has(i.path));
+      const uploaded = [];
+      for (const file of pending) {
+        uploaded.push(await uploadImage(file, cardId));
+      }
+
+      const removed = existing.filter((i) => !keep.has(i.path)).map((i) => i.path);
+      if (removed.length) {
+        // A failed delete must not lose the edit — the row is already correct,
+        // and an orphaned object costs storage, not correctness.
+        deleteImages(removed).catch((e) => console.warn('image delete failed:', e.message));
+      }
+
+      return [...kept, ...uploaded];
+    },
+  };
 }
 
 /** Collect the inputs into a patch, leaving the schedule columns alone. */

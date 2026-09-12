@@ -5,7 +5,7 @@
 
 import { readFileSync } from 'node:fs';
 import {
-  parse, parseText, parseJson, summarise, clozeParts, countBlanks, frontNormOf,
+  parse, parseText, parseJson, summarise, clozeParts, frontNormOf,
 } from '../js/importer.js';
 
 const R = new URL('../', import.meta.url);

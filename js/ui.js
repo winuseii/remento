@@ -25,12 +25,6 @@ export function el(tag, attrs = {}, ...children) {
 
 export function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
 
-export function escapeHtml(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
 // ── sanitising ──────────────────────────────────────────────────────────────
 // Card content is authored HTML, but it round-trips through third-party AI
 // output, so it is untrusted. Whitelist tags; allow no attributes at all,
@@ -300,15 +294,8 @@ export function fmtInterval(days) {
   return `${(days / 365).toFixed(1)}y`;
 }
 
-export function fmtDate(d) {
-  if (!d) return '—';
-  const date = d instanceof Date ? d : new Date(d);
-  if (Number.isNaN(+date)) return '—';
-  return date.toISOString().slice(0, 10);
-}
-
 /** Days from today to an ISO date string. Negative means overdue. */
-export function daysUntil(iso) {
+function daysUntil(iso) {
   if (!iso) return null;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const then = new Date(`${iso}T00:00:00`);
