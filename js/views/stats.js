@@ -134,6 +134,12 @@ function historyPanel(days) {
       el('span', { class: 'page-sub' }, `${total} total · peak ${max}/day`),
     ),
     svg,
+    // Bars need something to stand on, or they read as floating blocks.
+    el('div', { class: 'chart-base' }),
+    el('div', { class: 'chart-axis' },
+      el('span', {}, '30 days ago'),
+      el('span', {}, 'today'),
+    ),
     el('p', { class: 'hint' }, 'Green is the part graded Hard or better.'),
   );
 }
