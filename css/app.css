@@ -556,3 +556,170 @@ button { cursor: pointer; }
   .import-row { flex-wrap: wrap; }
   .import-row-front { flex-basis: 100%; white-space: normal; }
 }
+
+/* ── drill ──────────────────────────────────────────────────────────────── */
+/* The calm surface. Serif question, generous space, almost no chrome. At 1 a.m.
+   in the fifth hour of Thermo a dense instrument panel is hostile. */
+
+.mode-row { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-4); flex-wrap: wrap; }
+.setup-grid {
+  display: grid; gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.setup-counts { margin: var(--sp-4) 0; min-height: 1.2em; }
+
+.progress { height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.progress-fill { height: 100%; background: var(--sc); transition: width .2s ease-out; }
+
+.drill-head {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-4) 0 var(--sp-6);
+  font-family: var(--mono); font-size: var(--fs-label);
+  letter-spacing: var(--ls-label); text-transform: uppercase;
+}
+.drill-count { color: var(--sc); flex: none; }
+.drill-where { color: var(--tx-3); flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.badge-mode { color: var(--g-hard); border-color: var(--g-hard); }
+
+.drill-card { padding-bottom: var(--sp-7); }
+
+.card-question {
+  font-family: var(--serif);
+  font-size: var(--fs-question);
+  line-height: 1.5;
+  color: var(--tx);
+  overflow-wrap: anywhere;
+}
+.card-question p { margin: 0 0 var(--sp-3); }
+.count-line {
+  margin: var(--sp-4) 0 0;
+  font-family: var(--mono); font-size: var(--fs-label);
+  letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx-3);
+}
+.card-rule { height: 1px; background: var(--line); border: 0; margin: var(--sp-6) 0; }
+
+.answer-body, .answer-note {
+  font-size: var(--fs-answer); line-height: 1.7; color: var(--tx);
+  overflow-wrap: anywhere;
+}
+.answer-body ul, .answer-body ol { padding-left: 1.3em; margin: var(--sp-2) 0; }
+.answer-body li { margin-bottom: var(--sp-2); }
+.answer-note { color: var(--tx-2); font-size: var(--fs-body); margin: var(--sp-4) 0 0; }
+.answer-value {
+  font-family: var(--mono); font-size: 22px; color: var(--tx);
+  padding: var(--sp-4); background: var(--surface); border-radius: var(--r);
+  border-left: 2px solid var(--sc-dim);
+}
+
+/* KaTeX at 1.1x the surrounding text, per §7.3. */
+.math-display { margin: var(--sp-5) 0; overflow-x: auto; overflow-y: hidden; padding: var(--sp-2) 0; }
+.math-display .katex { font-size: 1.1em; }
+.math-inline .katex { font-size: 1.05em; }
+.katex-display { margin: var(--sp-3) 0; }
+
+.sym-table { width: 100%; border-collapse: collapse; margin-top: var(--sp-5); font-size: 13px; }
+.sym-table td { padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--line); vertical-align: top; }
+.sym-sym { width: 1%; white-space: nowrap; color: var(--tx); }
+.sym-means { color: var(--tx-2); }
+.sym-unit { width: 1%; white-space: nowrap; color: var(--tx-3); text-align: right; }
+
+/* Cloze */
+.cloze-gap {
+  display: inline-block;
+  border-bottom: 2px solid var(--sc-dim);
+  margin: 0 2px;
+  vertical-align: baseline;
+}
+.cloze-filled .cloze-fill {
+  color: var(--sc); border-bottom: 1px solid var(--sc-dim); padding-bottom: 1px;
+}
+
+/* Tick boxes — list and cloze */
+.tick-wrap { margin-top: var(--sp-5); }
+.tick-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.tick-item { background: var(--surface); }
+.tick-label {
+  display: flex; gap: var(--sp-3); align-items: flex-start;
+  padding: var(--sp-3); min-height: var(--tap); cursor: pointer;
+  font-size: var(--fs-answer); line-height: 1.6;
+}
+.tick-label:hover { background: var(--surface-2); }
+.tick-box { width: 18px; height: 18px; margin-top: 3px; flex: none; accent-color: var(--g-good); }
+.tick-no { color: var(--tx-3); flex: none; font-size: 12px; margin-top: 3px; }
+.tick-text { flex: 1; overflow-wrap: anywhere; }
+.tick-box:checked ~ .tick-text { color: var(--tx-2); }
+.tick-actions {
+  display: flex; align-items: center; gap: var(--sp-3);
+  margin-top: var(--sp-3); flex-wrap: wrap;
+}
+
+/* Annotation: why / trap / figure / source */
+.annot { margin-top: var(--sp-6); display: grid; gap: var(--sp-3); }
+.annot-row {
+  display: grid; grid-template-columns: 68px 1fr; gap: var(--sp-3);
+  padding: var(--sp-3); border-radius: var(--r);
+  background: var(--surface); border-left: 2px solid var(--line-2);
+  font-size: 13.5px; line-height: 1.6;
+}
+.annot-label {
+  font-family: var(--mono); font-size: var(--fs-label);
+  letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx-3);
+  padding-top: 2px;
+}
+.annot-body { color: var(--tx-2); overflow-wrap: anywhere; }
+.annot-trap { border-left-color: var(--g-hard); }
+.annot-trap .annot-label { color: var(--g-hard); }
+.annot-why { border-left-color: var(--g-easy); }
+.annot-fig { border-left-color: var(--tx-3); }
+.annot-meta {
+  margin: 0; font-family: var(--mono); font-size: 11px;
+  color: var(--tx-3); overflow-wrap: anywhere;
+}
+
+.img-strip { display: grid; gap: var(--sp-3); margin-top: var(--sp-5); }
+.img-strip img { border-radius: var(--r); border: 1px solid var(--line); }
+.img-missing { color: var(--g-hard); font-size: 12px; font-family: var(--mono); }
+
+/* The foot: reveal, then the four grades. Lower third, where the thumb is. */
+.drill-foot { position: sticky; bottom: 0; padding: var(--sp-4) 0 var(--sp-5);
+  background: linear-gradient(to bottom, transparent, var(--bg) 22%); }
+.btn-reveal { min-height: 52px; font-size: 13px; letter-spacing: .06em; }
+.kbd-hint {
+  margin: var(--sp-2) 0 0; text-align: center;
+  font-family: var(--mono); font-size: var(--fs-label);
+  letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx-3);
+}
+
+/* Grade buttons are never filled — a filled red would fight the brand.
+   Neutral outline, coloured left edge, coloured label. */
+.grade-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
+.grade-btn {
+  flex-direction: column; gap: 2px;
+  min-height: 60px; padding: var(--sp-2) var(--sp-1);
+  border-left: 3px solid var(--grade-color);
+  background: var(--surface);
+}
+.grade-btn:hover:not(:disabled) { background: var(--surface-2); border-color: var(--line-2);
+  border-left-color: var(--grade-color); }
+.grade-btn.is-suggested { box-shadow: inset 0 0 0 1px var(--grade-color); }
+.grade-key { font-size: 9px; color: var(--tx-3); }
+.grade-label { color: var(--grade-color); font-size: 12px; letter-spacing: .03em; }
+.grade-ivl { font-size: 10px; color: var(--tx-3); }
+.grade-suggestion { text-align: center; margin: var(--sp-2) 0 0; min-height: 1.2em; }
+
+/* ── card editor ────────────────────────────────────────────────────────── */
+.editor { display: grid; gap: var(--sp-4); }
+.editor-area { min-height: 84px; font-family: var(--sans); font-size: var(--fs-body); }
+.editor-row { display: grid; gap: var(--sp-3); grid-template-columns: 1fr 1fr; }
+.editor-status { min-height: 1.2em; margin: 0; }
+.check-line { display: flex; gap: var(--sp-3); align-items: center; font-size: 13px; cursor: pointer; }
+.check-line input { width: 16px; height: 16px; accent-color: var(--sc); }
+
+@media (max-width: 720px) {
+  .card-question { font-size: 19px; }
+  .annot-row { grid-template-columns: 1fr; gap: var(--sp-1); }
+  .grade-btn { min-height: 64px; }
+  .drill-foot { padding-bottom: var(--sp-3); }
+}
