@@ -91,11 +91,23 @@ eq('"ord: yes" sets ordered', parseText('L: p\n- a\n- b\nord: yes\n---').cards[0
 eq('cloze blanks counted', cloze2.content.blanks, 2);
 eq('clozeParts round-trips', clozeParts('a {{b}} c {{d}}').map((p) => (p.blank ? `[${p.text}]` : p.text)).join(''), 'a [b] c [d]');
 
-// ── numerical: why becomes context, per IMPORT-FORMAT.md ────────────────────
+// ── numerical: why and ctx are different fields ─────────────────────────────
+// docs/IMPORT-FORMAT.md is explicit that they are not interchangeable. `why`
+// is why the card matters to you; `ctx` is the surrounding fact a value needs
+// to make sense. Neither fills in for the other.
 console.log('\n── numerical ──────────────────────────────────────────────');
-const numT = parseText('N: Triple point of water.\n= 273.16 K, 0.6117 kPa\nwhy: The fixed point that defines the Kelvin.\n---').cards[0];
-eq('text "why:" fills numerical context', numT.content.context, 'The fixed point that defines the Kelvin.');
-eq('…and why is then not duplicated', numT.why, null);
+const numT = parseText('N: Triple point of water.\n= 273.16 K, 0.6117 kPa\nctx: The fixed point that defines the Kelvin.\n---').cards[0];
+eq('"ctx:" fills numerical context', numT.content.context, 'The fixed point that defines the Kelvin.');
+eq('…and leaves why alone', numT.why, null);
+
+const numBoth = parseText('N: p\n= v\nwhy: why it matters\nctx: the surrounding fact\n---').cards[0];
+eq('why and ctx coexist without merging',
+  [numBoth.why, numBoth.content.context], ['why it matters', 'the surrounding fact']);
+eq('"why:" alone no longer leaks into context',
+  parseText('N: p\n= v\nwhy: just why\n---').cards[0].content.context, undefined);
+eq('"ctx:" alone leaves why null',
+  parseText('N: p\n= v\nctx: just context\n---').cards[0].why, null);
+
 const numJ = parseJson('{"cards":[{"type":"numerical","content":{"prompt":"p","value":"v","context":"c"},"why":"w"}]}').cards[0];
 eq('JSON keeps context and why separate', [numJ.content.context, numJ.why], ['c', 'w']);
 

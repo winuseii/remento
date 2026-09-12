@@ -13,7 +13,9 @@ const TYPE_BY_MARKER = {
   Q: 'qa', F: 'formula', L: 'list', C: 'cloze', N: 'numerical', I: 'image',
 };
 
-const MODIFIERS = new Set(['A', 'why', 'trap', 'src', 'fig', 'imp', 'marks', 'tags', 'rev', 'sym', 'ord', 'note']);
+const MODIFIERS = new Set([
+  'A', 'why', 'ctx', 'trap', 'src', 'fig', 'imp', 'marks', 'tags', 'rev', 'sym', 'ord', 'note',
+]);
 
 /**
  * Mirror of the front_norm generated column in supabase/schema.sql:
@@ -230,6 +232,8 @@ function parseBlock(lines) {
       switch (key) {
         case 'A':     push(raw.content, '__back', val); field = { target: raw.content, key: '__back' }; break;
         case 'why':   push(raw, 'why', val);   field = { target: raw, key: 'why' }; break;
+        case 'ctx':   push(raw.content, 'context', val);
+                      field = { target: raw.content, key: 'context' }; break;
         case 'trap':  push(raw, 'trap', val);  field = { target: raw, key: 'trap' }; break;
         case 'note':  push(raw, 'note', val);  field = { target: raw, key: 'note' }; break;
         case 'src':   push(raw, 'source', val); field = { target: raw, key: 'source' }; break;
@@ -290,14 +294,11 @@ function buildCard(raw, defaults = {}, index = 0) {
   const importance = clampImportance(raw.importance ?? defaults.importance ?? 2);
   const marks = toIntOrNull(raw.marks);
 
-  // The text format has no content.context marker; IMPORT-FORMAT.md shows the
-  // same numerical card written with `why:` in text and "context" in JSON, so
-  // on a numerical card `why` fills context when context is absent.
-  let why = trimOrNull(raw.why);
-  if (type === 'numerical' && why && !content.context) {
-    content.context = why;
-    why = null;
-  }
+  // `why` and `ctx` are different fields and are not interchangeable
+  // (docs/IMPORT-FORMAT.md). `why` is why the card matters; `context` is the
+  // surrounding fact a numerical value needs to make sense. Neither fills the
+  // other in.
+  const why = trimOrNull(raw.why);
 
   return {
     card: {
