@@ -372,7 +372,7 @@ export async function recordReview({ card, grade, next, mode, fraction = null, m
 export async function existingForImport(subjectId) {
   const rows = unwrap(
     await supabase.from(T.cards)
-      .select('id, import_key, front_norm, content, unit_id, ivl, reps, due')
+      .select('id, import_key, front_norm, content, type, unit_id, ivl, ease, due, reps, lapses')
       .eq('subject_id', subjectId).is('deleted_at', null),
   ) ?? [];
 
@@ -388,28 +388,37 @@ export async function existingForImport(subjectId) {
 /**
  * Land an import.
  *
- * PostgREST has no multi-statement transaction, but a single upsert of an
- * array IS one statement, and therefore one transaction: it all lands or none
- * of it does. So inserts and updates go as two upserts at most, and the caller
- * is told which one failed.
+ * The spec asks for one transaction. PostgREST cannot open one across
+ * statements, so this is the closest honest thing: each of the two writes is a
+ * single statement over an array, and a single statement is atomic. Updates go
+ * first — they are idempotent and preserve the schedule — then one insert of
+ * every new card. If the insert fails, nothing new landed and the updates were
+ * no-ops on content you had already chosen to overwrite.
  *
- * Updating preserves the schedule: the patch never touches ivl / ease / due /
- * reps / lapses. A typo fix on a card reviewed nine times does not reset it.
+ * Re-running a failed import is safe for anything carrying an import_key: it
+ * updates rather than duplicates. Cards without one are caught by the
+ * front_norm duplicate check in the preview instead.
+ *
+ * Updating never touches ivl / ease / due / reps / lapses. A typo fix on a card
+ * reviewed nine times does not reset it.
  */
 export async function commitImport({ inserts = [], updates = [] }) {
   const uid = await userId();
-  let inserted = 0;
   let updated = 0;
+  let inserted = 0;
+
+  if (updates.length) {
+    // One statement: upsert on the primary key, with every schedule column
+    // carried over from the row that is already there.
+    const rows = updates.map((u) => ({ ...u.row, id: u.id, user_id: uid }));
+    const data = unwrap(await supabase.from(T.cards).upsert(rows, { onConflict: 'id' }).select('id'));
+    updated = data?.length ?? 0;
+  }
 
   if (inserts.length) {
     const rows = inserts.map((c) => ({ ...c, user_id: uid }));
     const data = unwrap(await supabase.from(T.cards).insert(rows).select('id'));
     inserted = data?.length ?? 0;
-  }
-
-  for (const u of updates) {
-    unwrap(await supabase.from(T.cards).update(u.patch).eq('id', u.id).select('id').single());
-    updated += 1;
   }
 
   return { inserted, updated };

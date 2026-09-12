@@ -517,3 +517,57 @@ export function summarise(cards) {
   for (const c of cards) byType[c.type] = (byType[c.type] ?? 0) + 1;
   return { total: cards.length, byType };
 }
+
+// ── planning ────────────────────────────────────────────────────────────────
+
+/**
+ * Match on import_key first, then on the front_norm generated column within
+ * the same subject — the order the spec asks for.
+ */
+export function planImport(cards, existing) {
+  const rows = [];
+  const counts = { new: 0, duplicate: 0, update: 0, reverse: 0 };
+  const seenNorm = new Set();
+
+  for (const card of cards) {
+    let status = 'new';
+    let match = null;
+
+    if (card.importKey && existing.byKey.has(card.importKey)) {
+      status = 'update';
+      match = existing.byKey.get(card.importKey);
+    } else if (card.frontNorm && existing.byFront.has(card.frontNorm)) {
+      status = 'duplicate';
+      match = existing.byFront.get(card.frontNorm);
+    } else if (card.frontNorm && seenNorm.has(card.frontNorm)) {
+      // A payload can repeat itself, too.
+      status = 'duplicate';
+    }
+
+    if (card.frontNorm) seenNorm.add(card.frontNorm);
+    if (card.reverse) counts.reverse += 1;
+    counts[status] += 1;
+    rows.push({ card, status, existing: match });
+  }
+
+  return { rows, counts };
+}
+
+/** A parsed card into a remento_cards row. */
+export function cardToRow(card, subjectId, unitId) {
+  return {
+    subject_id: subjectId,
+    unit_id: unitId ?? null,
+    type: card.type,
+    content: card.content,
+    why: card.why,
+    trap: card.trap,
+    source: card.source,
+    figure_ref: card.figure_ref,
+    note: card.note,
+    importance: card.importance,
+    marks: card.marks,
+    tags: card.tags,
+    import_key: card.importKey,
+  };
+}
