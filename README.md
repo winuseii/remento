@@ -6,7 +6,7 @@ each equation — which is most of what an engineering exam actually tests.
 
 **Live:** https://winuseii.github.io/remento/ (private — sign-in required)
 
-> This README is a stub. Fill it in after the build, following the outline below.
+---
 
 ## What it does
 
@@ -17,23 +17,168 @@ each equation — which is most of what an engineering exam actually tests.
   before import — see [`docs/IMPORT-FORMAT.md`](docs/IMPORT-FORMAT.md)
 - Full-text search and retention-by-tag analytics over the whole deck
 
+Target scale is 10,000 cards across eight semesters, which is what pushed it off a single-page
+artifact and onto a real database.
+
+---
+
 ## Architecture
 
-<!-- diagram: GitHub Pages (static ES modules) → Supabase (Postgres + Auth + Storage) -->
-<!-- explain: no build step, no server, RLS as the entire security model -->
+```
+GitHub Pages                     Supabase (ap-south-1)
+┌────────────────────┐          ┌──────────────────────────────┐
+│ index.html         │          │ Auth      magic link          │
+│ css/  tokens, app  │  HTTPS   │ Postgres  6 remento_* tables  │
+│ js/   ES modules   │ ───────► │ Storage   private image bucket│
+│ sw.js app shell    │          │ RLS       user_id = auth.uid()│
+└────────────────────┘          └──────────────────────────────┘
+        ▲
+        └── jsDelivr: supabase-js, KaTeX — as ES modules, no bundler
+```
+
+**No build step.** Plain ES modules loaded directly by the browser. GitHub Pages serves the folder
+as-is. No framework, no CSS framework, no TypeScript, no `package.json`. Five screens do not repay
+a toolchain, and every dependency added here is one more thing that can rot between now and finals.
+
+**RLS is the entire security model.** The publishable key is committed on purpose. Every table
+carries one policy — `user_id = auth.uid()` — so without a signed-in session the key reads zero
+rows and writes zero rows. The repo is public; the cards are not. You can verify this yourself:
+
+```bash
+curl -s "https://sxnlfevqdstaraidjpwj.supabase.co/rest/v1/remento_cards?select=id" \
+  -H "apikey: sb_publishable_9g6bQulrrLfKvi_9Kfx77Q_PMnuSfy5"
+# []
+```
+
+### Where the logic lives
+
+| File | Responsibility |
+|---|---|
+| `js/scheduler.js` | SM-2. **Pure** — no DOM, no network, no Supabase. |
+| `js/importer.js` | Both import formats → card objects. **Pure.** |
+| `js/db.js` | Every query in the app. No `.from()` anywhere else. |
+| `js/card-render.js` | Front and back for all six types. Shared by Drill and Browse. |
+| `js/ui.js` | Sanitising, KaTeX, toasts, modals. Knows the DOM and nothing else. |
+| `js/views/*.js` | One per tab, loaded lazily. |
+
+The two pure modules are the only real logic in the app, which is why they are pure: they are
+tested by calling them with data rather than by clicking through a UI.
+
+```bash
+node test/scheduler.test.mjs     # §4.3, asserted line by line
+node test/importer.test.mjs      # both real payloads, zero errors
+node test/import-plan.test.mjs   # re-import does not duplicate
+```
+
+No test framework, for the same reason there is no bundler.
+
+---
 
 ## Schema
 
-<!-- summarise supabase/schema.sql: six tables, generated columns for dedup and search, soft delete -->
+Six tables, all prefixed `remento_` because the Supabase project hosts another app. Full DDL in
+[`supabase/schema.sql`](supabase/schema.sql).
+
+```
+remento_settings    one row per user, JSONB
+remento_semesters ──┐
+remento_subjects  ──┼── structure; units_declared lives on subjects
+remento_units     ──┘
+remento_cards       content JSONB + schedule inline
+remento_reviews     one row per grade, forever
+```
+
+Three things the database does so the client does not have to:
+
+- **`front_norm`** is a generated column — normalised front text, `lower()` with everything
+  non-alphanumeric stripped. Duplicate detection on import compares against it.
+  `importer.js` mirrors the transform exactly, and a test pins the two together.
+- **`search_tsv`** is a generated tsvector over every text-bearing field. Search is
+  `.textSearch('search_tsv', q, { type: 'websearch' })`. Tags are deliberately *not* in it —
+  Postgres rejects `array_to_string` in a generated column because it is only STABLE, not
+  IMMUTABLE — so tag filtering goes through a GIN index on `tags` instead.
+- **`import_key`** is unique per user, so re-importing a corrected card updates it and keeps its
+  review schedule rather than making a second copy.
+
+**The schedule is inline on `cards`.** Grading a card is one write, not a join.
+
+**Deletion is soft.** `deleted_at` is set; every card query filters `.is('deleted_at', null)`; rows
+older than 10 days are hard-deleted on boot. No cron job, because the app is opened daily by
+definition.
+
+**Review history is its own table.** 10,000 cards × a few hundred reviews each is a few hundred
+thousand rows — trivial for Postgres, and it is the single reason the stats are real aggregate
+queries instead of client-side arithmetic over a blob.
+
+---
 
 ## Scheduling
 
-<!-- the SM-2 variant from docs/SPEC.md §4.3, and why cram does not write to it -->
+The SM-2 variant from [`docs/SPEC.md`](docs/SPEC.md) §4.3, implemented verbatim:
+
+```
+Again (0):  ease = max(1.3, ease − 0.20);  ivl = 0     → back this session; lapses++
+Hard  (1):  ease = max(1.3, ease − 0.15);  ivl = ivl ? max(1, round(ivl × 1.2)) : 1
+Good  (2):  ease unchanged;                ivl = ivl ? round(ivl × ease)        : 1
+Easy  (3):  ease = ease + 0.15;            ivl = ivl ? round(ivl × ease × 1.3)  : 4
+
+ivl capped at 365 days.  lapses ≥ 6 flags a leech.
+```
+
+On Easy the spec raises the ease before it uses it, so the raised value multiplies the interval.
+That reading is asserted in the tests rather than left to whoever reads the code next.
+
+On list and cloze cards the tick boxes suggest a grade — all correct → Good, ≥ 60% → Hard,
+below → Again — and the **fraction is stored on the review row whatever you actually press**, so
+the stats can tell "I pressed Good" apart from "I got 4 of 5".
+
+### Why cram does not write
+
+Cram loads everything in scope, due or not, shuffled, and logs every grade to `remento_reviews`
+with `mode = 'cram'` — but never touches `ivl`, `ease` or `due`. A week of cramming leaves the due
+queue exactly where it was.
+
+This will feel wrong and it is correct. Cramming is not evidence that you will still know something
+in three weeks, and letting it push intervals out would make the schedule lie in the direction you
+want to be lied to. For the same reason, cram rows are excluded from the retention figure.
+
+---
 
 ## Running it yourself
 
-<!-- fork, apply supabase/schema.sql, set js/config.js, enable Pages -->
+1. Fork the repo.
+2. Create a Supabase project and run [`supabase/schema.sql`](supabase/schema.sql) in the SQL editor.
+   It is safe to re-run: every statement is guarded.
+3. Put your project URL and publishable key in [`js/config.js`](js/config.js).
+4. **Settings → Pages → Deploy from a branch → main / (root)**.
+5. Add the Pages URL to **Supabase → Authentication → URL Configuration → Redirect URLs**, or the
+   magic link will bounce.
+
+There is nothing to install and nothing to build.
+
+---
 
 ## Honest limitations
 
-<!-- copy from docs/SPEC.md §10 — no offline mode, coverage is undecidable, self-graded retention -->
+- **Coverage is undecidable by the app.** Remento cannot know your syllabus. Every completeness
+  number is relative to what you entered, which is why `units_declared` exists and why an
+  undeclared subject reads `Coverage: undeclared` instead of a flattering percentage. A confident
+  number with no denominator is worse than no number.
+- **Self-grading is a self-report, not a measurement.** That is the point, and it also means
+  retention here is not comparable to anyone else's.
+- **No offline mode.** The service worker caches the app shell, so Remento *opens* without a
+  connection and then has nothing to show, because card data is deliberately never cached. This is
+  the largest risk the architecture carries. v2 is an IndexedDB mirror with a sync queue; the PWA
+  exists now so that stays possible.
+- **Supabase free projects pause after 7 days of inactivity.** Daily use prevents it; a long
+  holiday does not. Un-pausing is one click and loses nothing.
+- **Images are not in the backup.** Text and schedule survive an export; images live in Storage.
+- **The import is not one transaction.** PostgREST cannot open one across statements. Updates and
+  inserts each go as a single array write, which is atomic individually, and `import_key` makes a
+  re-run safe. `db.js` says so where it happens rather than pretending otherwise.
+- **The scheduler is tuned by feel.** SM-2's constants are forty years old and were fitted to
+  vocabulary, not thermodynamics derivations. If the intervals feel wrong after a month, §4.3 is
+  what changes.
+- **Card content is treated as untrusted.** It is my own material, but it round-trips through
+  third-party AI output, so it is sanitised against a tag whitelist with no attributes permitted
+  before it is ever inserted.
