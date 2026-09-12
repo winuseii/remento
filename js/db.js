@@ -328,8 +328,14 @@ export async function resetSchedule(ids) {
  * `next` comes from scheduler.js. In cram and quiz modes it is null — those
  * modes log the review and deliberately leave the due date where it was.
  */
-export async function recordReview({ card, grade, next, mode, fraction = null, ms = null }) {
+export async function recordReview({
+  card, grade, next, mode, fraction = null, ms = null, ivlBefore = null,
+}) {
   const uid = await userId();
+
+  // The caller may already have advanced the card in memory to keep the UI
+  // responsive, so ivl_before is taken as given when it is passed.
+  const before = ivlBefore ?? card.ivl ?? 0;
 
   if (next) {
     unwrap(
@@ -348,8 +354,8 @@ export async function recordReview({ card, grade, next, mode, fraction = null, m
       grade,
       mode,
       fraction,
-      ivl_before: card.ivl ?? 0,
-      ivl_after: next ? next.ivl : (card.ivl ?? 0),
+      ivl_before: before,
+      ivl_after: next ? next.ivl : before,
       ms,
     }).select('id').single(),
   );

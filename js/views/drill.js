@@ -347,6 +347,12 @@ export async function render(panel, ctx) {
     const fraction = session.ticks?.total ? session.ticks.ticked / session.ticks.total : null;
     const ms = Date.now() - session.cardStart;
 
+    // Read the interval before anything mutates the card. The review row's
+    // ivl_before is what marks a review as a card's first — todayCounts()
+    // counts new cards with it — so it has to be the stored value, not the
+    // one we are about to write.
+    const ivlBefore = card.ivl ?? 0;
+
     // Advance the UI immediately; the write follows. A slow network must not
     // make the next card wait.
     session.graded += 1;
@@ -365,7 +371,7 @@ export async function render(panel, ctx) {
     drawCard();
 
     try {
-      await db.recordReview({ card, grade: g, next, mode: session.mode, fraction, ms });
+      await db.recordReview({ card, grade: g, next, mode: session.mode, fraction, ms, ivlBefore });
       if (next?.isLeech) toast('That card is now a leech — Weak mode collects it.', 'warn');
     } catch (err) {
       toastError('Review not saved', err);
