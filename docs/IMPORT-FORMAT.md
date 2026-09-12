@@ -69,6 +69,11 @@ Every card has this shape. Only `type` and `content` are required.
 Text fields accept a small amount of HTML: `<strong> <em> <br> <ul> <li> <code> <sup> <sub>`.
 LaTeX is written `$inline$` and `$$display$$`.
 
+**Two equations on one card:** in JSON, put both in one `latex` string joined with `\\` (a LaTeX
+newline). In the text format, write two consecutive `$$…$$` blocks and the importer joins them the
+same way. Use this where a rate form and a per-unit-mass form belong on the same card — the SFEE
+card in `data/thermo-unit2.txt` is the worked example.
+
 ### The six content shapes
 
 **qa** — the default. Use for anything that is a question with an answer.
@@ -183,14 +188,19 @@ C: Carnot efficiency depends only on {{the absolute temperatures of the two
 
 N: Triple point of water — temperature and pressure.
 = 273.16 K, 0.6117 kPa
-why: The fixed point that defines the Kelvin.
+ctx: The fixed point that defines the Kelvin.
 ---
 ```
 
 **Type markers** — `Q:` qa · `F:` formula · `L:` list · `C:` cloze · `N:` numerical · `I:` image
 **Modifiers** — `A:` answer · `why:` · `trap:` · `src:` · `fig:` · `imp:` 1–3 · `marks:` ·
 `tags:` (`+x` adds to header tags; a bare list replaces them) · `rev: yes` · `sym:` (formula only) ·
-`=` (numerical value) · `-` (list item)
+`=` (numerical value) · `ctx:` (numerical context) · `-` (list item) · `ord: yes` (list is ordered)
+
+`why:` and `ctx:` are different fields and are not interchangeable. `why:` is why the card matters
+to you; `ctx:` is the surrounding fact a numerical value needs to make sense. A list is unordered
+unless it carries `ord: yes` — order only matters when being asked for them out of sequence would
+cost a mark.
 
 Continuation lines are indented. A blank line inside a block is allowed. `---` alone ends a card.
 
