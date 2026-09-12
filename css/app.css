@@ -888,3 +888,6 @@ button { cursor: pointer; }
   color: var(--g-good); background: var(--bg);
   padding: 1px 5px; border-radius: var(--r-sm);
 }
+
+/* "+N to redo" — Again requeues, shown beside the fixed finish line. */
+.drill-redo { flex: none; color: var(--g-again); font-size: 10px; }

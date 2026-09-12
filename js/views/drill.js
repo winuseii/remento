@@ -173,9 +173,15 @@ export async function render(panel, ctx) {
       session = {
         mode: setup.mode,
         queue,
+        // The finish line is fixed at what you started with. Cards sent back
+        // by Again are extra work, not a moving target — §4.2 says a visible
+        // finish line is what makes a phone session start at all, and a
+        // denominator that grows every time you press Again is not one.
+        size: queue.length,
         index: 0,
         revealed: false,
         ticks: null,
+        checked: null,
         cardStart: Date.now(),
         graded: 0,
         tally: { again: 0, hard: 0, good: 0, easy: 0 },
@@ -242,17 +248,21 @@ export async function render(panel, ctx) {
     if (!card) { endSession(); return; }
 
     clear(root);
-    session.ticks = null;
 
-    const total = session.queue.length;
+    const size = session.size;
+    const done = Math.min(session.index, size);
+    // Cards past the original queue length are Again requeues being re-shown.
+    const redo = session.queue.length - Math.max(session.index, size);
     const bar = el('div', { class: 'progress' },
-      el('div', { class: 'progress-fill', style: `width:${(session.index / total) * 100}%` }));
+      el('div', { class: 'progress-fill', style: `width:${(done / size) * 100}%` }));
 
     const subject = state.subjects.find((s) => s.id === card.subject_id);
     const unit = state.units.find((u) => u.id === card.unit_id);
 
     const head = el('div', { class: 'drill-head' },
-      el('span', { class: 'drill-count num' }, `${session.index + 1} / ${total}`),
+      el('span', { class: 'drill-count num' },
+        session.index < size ? `${session.index + 1} / ${size}` : `${size} / ${size}`),
+      redo > 0 ? el('span', { class: 'drill-redo num' }, `+${redo} to redo`) : null,
       el('span', { class: 'drill-where' },
         [subject?.name, unit ? `Unit ${unit.no}` : null].filter(Boolean).join('  ·  ')),
       el('span', { class: 'row-actions' },
@@ -282,7 +292,7 @@ export async function render(panel, ctx) {
         el('p', { class: 'kbd-hint' }, 'space or enter'));
     } else {
       body.append(el('hr', { class: 'card-rule' }));
-      body.append(renderBack(card, { onTick: onTick }));
+      body.append(renderBack(card, { onTick, checked: session.checked ?? [] }));
       foot.append(gradeRow(card));
     }
 
@@ -295,9 +305,10 @@ export async function render(panel, ctx) {
     drawCard();
   }
 
-  function onTick(ticked, total) {
+  function onTick(ticked, total, boxes) {
     if (!session) return;
     session.ticks = { ticked, total };
+    session.checked = boxes;
     const suggested = suggestedGrade(ticked, total);
     for (const btn of root.querySelectorAll('.grade-btn')) {
       btn.classList.toggle('is-suggested', Number(btn.dataset.grade) === suggested);
@@ -367,6 +378,8 @@ export async function render(panel, ctx) {
 
     session.index += 1;
     session.revealed = false;
+    session.ticks = null;
+    session.checked = null;
     session.cardStart = Date.now();
     drawCard();
 

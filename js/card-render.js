@@ -16,9 +16,14 @@ import { signedImageUrl } from './images.js';
 export function renderFront(card) {
   const c = card.content ?? {};
 
+  // Any card type can carry images (§2.2) — `image` as a type only means the
+  // picture is the question. A formula card with a screenshot of the
+  // derivation gets it drawn here too.
+  const pictures = imageStrip(card);
+
   switch (card.type) {
     case 'formula':
-      return el('div', { class: 'card-front' }, question(c.prompt));
+      return el('div', { class: 'card-front' }, question(c.prompt), pictures);
 
     case 'list':
       return el('div', { class: 'card-front' },
@@ -26,20 +31,19 @@ export function renderFront(card) {
         // The front shows the prompt AND the count. A list card that hides its
         // count is a different, easier question.
         el('p', { class: 'count-line' }, `${(c.items ?? []).length} items`),
+        pictures,
       );
 
     case 'cloze':
-      return el('div', { class: 'card-front' }, clozeFront(c.text));
+      return el('div', { class: 'card-front' }, clozeFront(c.text), pictures);
 
     case 'numerical':
-      return el('div', { class: 'card-front' }, question(c.prompt));
+      return el('div', { class: 'card-front' }, question(c.prompt), pictures);
 
     case 'image':
-      return el('div', { class: 'card-front' }, question(c.front), imageStrip(card));
-
     case 'qa':
     default:
-      return el('div', { class: 'card-front' }, question(c.front), imageStrip(card));
+      return el('div', { class: 'card-front' }, question(c.front), pictures);
   }
 }
 
@@ -48,7 +52,7 @@ export function renderFront(card) {
  * `onTick` is called with (ticked, total) whenever a tick box changes, so the
  * drill can suggest a grade.
  */
-export function renderBack(card, { onTick } = {}) {
+export function renderBack(card, { onTick, checked = [] } = {}) {
   const c = card.content ?? {};
   const box = el('div', { class: 'card-back' });
 
@@ -63,7 +67,7 @@ export function renderBack(card, { onTick } = {}) {
     case 'list': {
       const items = c.items ?? [];
       box.append(tickList(items.map((t) => ({ text: t })), {
-        ordered: Boolean(c.ordered), onTick,
+        ordered: Boolean(c.ordered), onTick, checked,
       }));
       break;
     }
@@ -72,7 +76,7 @@ export function renderBack(card, { onTick } = {}) {
       const parts = clozeParts(c.text ?? '');
       const blanks = parts.filter((p) => p.blank);
       box.append(clozeBack(parts));
-      box.append(tickList(blanks.map((b) => ({ text: b.text })), { ordered: false, onTick }));
+      box.append(tickList(blanks.map((b) => ({ text: b.text })), { ordered: false, onTick, checked }));
       break;
     }
 
@@ -134,14 +138,21 @@ function clozeBack(parts) {
  * whatever grade you actually press, so the stats can tell "I pressed Good"
  * from "I got 4 of 5".
  */
-function tickList(items, { ordered, onTick }) {
+function tickList(items, { ordered, onTick, checked = [] }) {
   const boxes = [];
   const list = el(ordered ? 'ol' : 'ul', { class: 'tick-list' });
 
-  const report = () => onTick?.(boxes.filter((b) => b.checked).length, boxes.length);
+  // Report the ticked boxes themselves, not just the count, so a re-render
+  // (toggling Edit mid-card, say) can put them back exactly as they were.
+  const report = () => onTick?.(
+    boxes.filter((b) => b.checked).length,
+    boxes.length,
+    boxes.map((b) => b.checked),
+  );
 
   items.forEach((item, i) => {
     const box = el('input', { type: 'checkbox', class: 'tick-box' });
+    box.checked = Boolean(checked[i]);
     box.addEventListener('change', report);
     boxes.push(box);
 
