@@ -1,0 +1,68 @@
+@semester: 3
+@subject: Thermodynamics
+@unit: 2 — First Law Applied to Open Systems (SFEE)
+@tags: thermo, sfee
+@importance: 3
+
+F: State the steady flow energy equation (SFEE) in rate form and per unit mass.
+$$\left(\dot m h_1 + \dot m \frac{V_1^2}{2} + \dot m g z_1\right) + \dot Q = \left(\dot m h_2 + \dot m \frac{V_2^2}{2} + \dot m g z_2\right) + \dot W$$
+$$h_1 + \frac{V_1^2}{2} + g z_1 + q = h_2 + \frac{V_2^2}{2} + g z_2 + w$$
+sym: \dot m | mass flow rate | kg/s
+sym: h | specific enthalpy | kJ/kg
+sym: V | flow velocity | m/s
+sym: z | elevation above datum | m
+sym: \dot Q | rate of heat transfer into the CV | kW
+sym: \dot W | rate of shaft work out of the CV | kW
+trap: Dividing by mass flow gives the per-unit-mass form in kJ/kg. Mixing the two forms mid-solution is the most common way this equation goes wrong. Velocity terms are V²/2 in J/kg, so divide by 1000 before adding to h in kJ/kg.
+src: Own notes p.21
+rev: yes
+---
+
+L: State the two assumptions behind the steady flow energy equation.
+- Mass transfer: by conservation of mass, mass accumulation inside the control volume Δm = 0, so ṁ_in = ṁ_out
+- The properties throughout the control volume are constant with respect to time — that is, the flow is steady
+trap: "Steady" constrains time, not space. Properties may still vary from inlet to exit; they just do not change at any fixed point as time passes.
+src: Own notes p.21
+---
+
+F: State the continuity equation for steady flow through a control volume.
+$$\rho_1 A_1 V_1 = \rho_2 A_2 V_2 \qquad \frac{A_1 V_1}{v_1} = \frac{A_2 V_2}{v_2}$$
+sym: \rho | density | kg/m³
+sym: A | cross-sectional area | m²
+sym: V | velocity | m/s
+sym: v | specific volume | m³/kg
+trap: For an ideal gas it is more convenient to use the specific-volume form, since v = RT/P comes straight from the state equation. Your notes say exactly this.
+src: Own notes pp.21, 22
+imp: 3
+---
+
+C: In the SFEE sign convention a turbine produces work so its shaft work is {{positive}}, while a compressor absorbs work so its shaft work is {{negative}}.
+why: Getting this backwards turns a 112 kW turbine output into a 112 kW input and loses the whole question.
+src: Own notes p.22
+imp: 3
+tags: +convention
+---
+
+Q: In an SFEE problem on a turbine, when can the inlet kinetic energy term be dropped, and when can it not?
+A: It can be dropped when the inlet velocity is small compared with the exit velocity, which is the usual case for a turbine — your notes' worked example states "the inlet velocity is small compared to the exit velocity of 100 m/s" and drops it. It cannot be dropped for nozzles and diffusers, where the whole purpose of the device is to change velocity, so the kinetic energy terms are the dominant ones.
+trap: Potential energy terms (gz) are almost always negligible and are stated as such; kinetic energy terms are only negligible for turbines, compressors and heat exchangers.
+src: Own notes pp.22, 24
+imp: 3
+tags: +assumptions
+---
+
+Q: For an ideal gas in an SFEE problem, why can you not use steam tables, and what do you use instead?
+A: Air is not a pure substance with tabulated saturation properties in the same way, so enthalpy is obtained from the ideal gas relation instead: h = u + Pv = CvT + RT = (Cv + R)T = CpT. So h = Cp·T.
+why: Your notes derive exactly this line before the air-turbine problem, because the instinct is to reach for the steam table.
+trap: h = CpT requires T in kelvin, and it gives enthalpy relative to an arbitrary zero — fine for differences, meaningless as an absolute.
+src: Own notes p.22
+imp: 3
+tags: +ideal-gas
+---
+
+I: Sketch the control-volume diagram for a turbine and for a compressor, marking the inlet, the outlet and the direction of shaft work.
+A: Turbine — inlet at the top with ṁ and h₁ entering, outlet at the bottom, W_shaft leaving as positive. Compressor — inlet at the bottom, outlet at the top, W_shaft entering as negative. Both are drawn as trapezia, with the turbine widening in the flow direction and the compressor narrowing.
+fig: Own notes p.22, top left — "TURBINES AND COMPRESSORS (SFEE)", both drawn side by side with the sign of W marked on each. Google image search: "turbine compressor control volume SFEE diagram". Label in this order: control volume boundary, inlet state (1), exit state (2), Q̇ direction, then Ẇ with its sign.
+imp: 2
+tags: +diagram
+---
