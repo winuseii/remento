@@ -28,17 +28,9 @@ export async function userId() {
 
 export function forgetUser() { cachedUserId = null; }
 
-/**
- * Mirror of the front_norm generated column in supabase/schema.sql:
- *   regexp_replace(lower(coalesce(front, prompt, text, '')), '[^a-z0-9]+', '', 'g')
- *
- * Duplicate detection compares an incoming card against the stored column, so
- * the two transforms must stay in step. If the column changes, change this.
- */
-export function frontNormOf(content) {
-  const raw = content?.front ?? content?.prompt ?? content?.text ?? '';
-  return String(raw).toLowerCase().replace(/[^a-z0-9]+/g, '');
-}
+// front_norm's client-side mirror lives in importer.js, next to the parsing it
+// serves and the tests that pin it to the generated column.
+export { frontNormOf } from './importer.js';
 
 // ── settings ────────────────────────────────────────────────────────────────
 
@@ -475,6 +467,29 @@ export async function worstCards({ subjectId = null, limit = 10 } = {}) {
   let q = supabase.from(T.cards).select(CARD_COLS).is('deleted_at', null).gt('lapses', 0);
   if (subjectId) q = q.eq('subject_id', subjectId);
   return unwrap(await q.order('lapses', { ascending: false }).limit(limit)) ?? [];
+}
+
+/**
+ * Per-card review stats for one page of Browse.
+ * One query bounded by the page size, not one per row.
+ */
+export async function reviewStatsFor(cardIds) {
+  if (!cardIds?.length) return new Map();
+  const uid = await userId();
+  const rows = unwrap(
+    await supabase.from(T.reviews).select('card_id, grade, mode')
+      .eq('user_id', uid).in('card_id', cardIds).in('mode', ['drill', 'weak']),
+  ) ?? [];
+
+  const out = new Map();
+  for (const r of rows) {
+    const e = out.get(r.card_id) ?? { reviews: 0, recalled: 0, pct: 0 };
+    e.reviews += 1;
+    if (r.grade >= 1) e.recalled += 1;
+    out.set(r.card_id, e);
+  }
+  for (const e of out.values()) e.pct = (100 * e.recalled) / e.reviews;
+  return out;
 }
 
 /** Retention per tag, straight from the RPC in the schema. */

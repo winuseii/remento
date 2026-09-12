@@ -723,3 +723,88 @@ button { cursor: pointer; }
   .grade-btn { min-height: 64px; }
   .drill-foot { padding-bottom: var(--sp-3); }
 }
+
+/* ── browse ─────────────────────────────────────────────────────────────── */
+.filter-bar { display: grid; gap: var(--sp-3); }
+.filter-row { display: flex; gap: var(--sp-2); flex-wrap: wrap; align-items: center; }
+.filter-row .select { width: auto; min-width: 130px; flex: 0 1 auto; }
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--surface);
+}
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--surface-2);
+  text-align: left; white-space: nowrap;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono); font-size: var(--fs-label);
+  letter-spacing: var(--ls-label); text-transform: uppercase; color: var(--tx-3);
+  font-weight: 400;
+}
+.table th.is-sortable { cursor: pointer; user-select: none; }
+.table th.is-sortable:hover { color: var(--tx-2); }
+.table th.is-active { color: var(--sc); }
+.table th.num, .table td.num { text-align: right; font-family: var(--mono);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.table td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.table tbody tr { cursor: pointer; }
+.table tbody tr:hover { background: var(--surface-2); }
+.table tbody tr.is-suspended { opacity: .45; }
+.table tbody tr.is-leech .col-front { color: var(--g-hard); }
+.table td.is-bad { color: var(--g-again); }
+
+.col-front { max-width: 1px; width: 100%; }
+.front-text {
+  display: inline-block; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom;
+}
+.imp-dot { color: var(--sc); margin-left: var(--sp-2); font-size: 10px; }
+.col-type { font-family: var(--mono); font-size: 11px; color: var(--tx-3); white-space: nowrap; }
+.col-unit, .col-pick { width: 1%; }
+.col-tags { white-space: nowrap; }
+.col-actions { width: 1%; white-space: nowrap; }
+.tag {
+  display: inline-block; margin-right: 4px;
+  font-family: var(--mono); font-size: 10px; color: var(--tx-3);
+  border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 1px 5px;
+}
+.star-btn {
+  background: none; border: 0; color: var(--tx-3); font-size: 14px;
+  padding: 2px 4px; line-height: 1;
+}
+.star-btn.is-on { color: var(--sc); }
+.star-btn:hover { color: var(--sc-hi); }
+
+.row-expanded > td { background: var(--bg); padding: 0; }
+.row-expand-inner { padding: var(--sp-5); max-width: var(--maxw); cursor: default; }
+
+.bulk-bar {
+  display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+  padding: var(--sp-3);
+  background: var(--sc-bg); border: 1px solid var(--sc-dim); border-radius: var(--r);
+  margin-bottom: var(--sp-3);
+  position: sticky; top: 52px; z-index: 20;
+}
+.bulk-count { color: var(--sc); font-size: 12px; flex: none; }
+
+.pager {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-3); padding: var(--sp-3) 0; flex-wrap: wrap;
+}
+.pager-count, .pager-page { font-size: 12px; color: var(--tx-3); }
+
+@media (max-width: 720px) {
+  .filter-row .select { min-width: 0; flex: 1 1 44%; }
+  .table { font-size: 12px; }
+  /* Tags and retention are the first things to go on a phone. */
+  .table th:nth-child(n+6):nth-child(-n+7), .table td.col-tags { display: none; }
+  .bulk-bar { top: 48px; }
+}
