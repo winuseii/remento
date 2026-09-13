@@ -1,9 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Remento">
-  <!-- The mark is the app's own vocabulary: a scarlet block, a serif R, and
-       the index rule that runs under every screen in the product. -->
-  <rect width="64" height="64" rx="12" fill="#EF3B42"/>
-  <text x="32" y="44" text-anchor="middle"
-        font-family="Newsreader, Georgia, 'Times New Roman', serif"
-        font-size="38" fill="#F0EEE9">R</text>
-  <rect x="18" y="50" width="28" height="2" rx="1" fill="#F0EEE9" opacity=".55"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none"
+     role="img" aria-label="Remento">
+  <title>Remento</title>
+  <!-- The graph IS the check.
+       Your reference put two ideas side by side — a knowledge network and a
+       tick. Drawn as one shape they say the same thing in half the space and
+       survive 16px, which a brain never does: linked cards, recall confirmed.
+       Geometric and precise, which is the vocabulary the rest of the app
+       already speaks. -->
+  <g stroke="#EF3B42" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6.5 15.5 12.5 22 19 14 25.5 6.5" fill="none"/>
+    <g fill="#EF3B42" stroke="none">
+      <circle cx="6.5"  cy="15.5" r="3"/>
+      <circle cx="12.5" cy="22"   r="3"/>
+      <circle cx="19"   cy="14"   r="2.6"/>
+      <circle cx="25.5" cy="6.5"  r="3.4"/>
+    </g>
+  </g>
 </svg>

@@ -132,14 +132,9 @@ h1, h2, h3, h4, p, dl, dd, figure { margin: 0; }
   display: flex; align-items: center; gap: var(--sp-3);
   padding: var(--sp-1) var(--sp-3) var(--sp-7);
 }
-/* The mark: a scarlet rule and an R. Geometric, not a logo. */
-.brand-mark {
-  width: 24px; height: 24px; flex: none;
-  display: grid; place-items: center;
-  font-family: var(--serif); font-size: 15px; line-height: 1;
-  color: var(--tx); background: var(--sc);
-  border-radius: var(--r-sm);
-}
+/* The mark. Scarlet already, so it needs no container — a tinted box
+   around it would only add a second shape competing with the first. */
+.brand-mark { width: 22px; height: 22px; flex: none; }
 .brand-word {
   font-family: var(--serif); font-size: 17px; letter-spacing: -.01em; color: var(--tx);
 }
@@ -933,11 +928,11 @@ h1, h2, h3, h4, p, dl, dd, figure { margin: 0; }
 
 /* ── boot + sign in ── */
 .boot { position: fixed; inset: 0; z-index: 60; display: grid; place-content: center; justify-items: center; gap: var(--sp-6); background: var(--bg); }
-.boot-mark { width: 34px; height: 34px; display: grid; place-items: center; background: var(--sc); border-radius: var(--r); font-family: var(--serif); font-size: 20px; color: var(--tx); }
+.boot-mark { width: 44px; height: 44px; }
 
 .signin { min-height: 100dvh; display: grid; place-items: center; padding: var(--sp-6); }
 .signin-panel { width: 100%; max-width: 360px; }
-.signin-mark { width: 34px; height: 34px; display: grid; place-items: center; background: var(--sc); border-radius: var(--r); font-family: var(--serif); font-size: 20px; color: var(--tx); margin-bottom: var(--sp-6); }
+.signin-mark { width: 40px; height: 40px; margin-bottom: var(--sp-6); }
 .signin-title { font-family: var(--serif); font-weight: var(--fw-normal); font-size: 38px; line-height: var(--lh-tight); letter-spacing: var(--ls-tight); }
 .signin-sub { color: var(--tx-3); font-size: var(--fs-small); margin-bottom: var(--sp-9); }
 .signin-form { display: grid; gap: var(--sp-4); }
