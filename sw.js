@@ -6,7 +6,10 @@
 // where an IndexedDB mirror makes it actually usable offline. The PWA exists
 // now so that stays possible.
 
-const VERSION = 'v1';
+// Bump this on every deploy that changes the shell. The activate handler
+// deletes every cache that is not the current name, so a bump is what
+// guarantees a returning visitor gets the new CSS instead of last week's.
+const VERSION = 'v2-redesign';
 const SHELL = `remento-shell-${VERSION}`;
 
 /** Everything needed to paint the frame. No data, no user content. */
