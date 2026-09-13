@@ -493,6 +493,19 @@ h1, h2, h3, h4, p { margin: 0; }
 /* ═══════════════════════════════════════════════════════════════════════════
    BROWSE — instrument
    ═══════════════════════════════════════════════════════════════════════════ */
+/* Keyboard-only escape hatch: off-screen until focused. */
+.skip-link {
+  position: absolute; left: var(--sp-3); top: -100px; z-index: 90;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-2); color: var(--tx);
+  border: 1px solid var(--sc); border-radius: var(--r);
+  font-family: var(--mono); font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label); text-transform: uppercase;
+  text-decoration: none;
+  transition: top var(--t-fast);
+}
+.skip-link:focus { top: var(--sp-3); }
+
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap;
