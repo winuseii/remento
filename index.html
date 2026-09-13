@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0A0B0D">
+<meta name="theme-color" content="#0B0C0E">
 <meta name="description" content="Spaced-repetition flashcards for coursework.">
 <meta property="og:title" content="Remento">
 <meta property="og:description" content="Spaced-repetition flashcards for coursework.">
@@ -16,12 +16,13 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-<!-- Type. Stylesheets only; tokens.css declares fallbacks if these never arrive. -->
+<!-- Three families, two superfamilies. Plex Sans carries the interface,
+     Plex Mono the technical layer, Newsreader the study surface. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap">
 
-<!-- KaTeX stylesheet. The renderer itself is imported as an ES module in js/ui.js. -->
+<!-- KaTeX stylesheet. The renderer is imported as an ES module in js/ui.js. -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0/dist/katex.min.css">
 
 <link rel="stylesheet" href="css/tokens.css">
@@ -29,27 +30,30 @@
 </head>
 <body>
 
-<a class="skip-link" href="#panel-drill">Skip to content</a>
+<a class="skip-link" href="#main">Skip to content</a>
 
 <!-- ── boot ──────────────────────────────────────────────────────────────── -->
 <div id="boot" class="boot">
-  <div class="boot-mark">REMENTO</div>
-  <div class="spinner" aria-label="Loading"></div>
+  <div class="boot-mark" aria-hidden="true">R</div>
+  <div class="spinner" role="status" aria-label="Loading Remento"></div>
 </div>
 
 <!-- ── sign in ───────────────────────────────────────────────────────────── -->
 <!-- The whole app is behind this. No session, nothing else renders. -->
 <main id="signin" class="signin" hidden>
   <div class="signin-panel">
-    <h1 class="signin-mark">Remento</h1>
+    <div class="signin-mark" aria-hidden="true">R</div>
+    <h1 class="signin-title">Remento</h1>
     <p class="signin-sub">Spaced repetition for coursework.</p>
 
     <form id="signin-form" class="signin-form" novalidate>
-      <label class="label" for="signin-email">Email</label>
-      <input id="signin-email" class="input" type="email" name="email"
-             autocomplete="email" inputmode="email" required
-             placeholder="you@example.com" spellcheck="false">
-      <button id="signin-btn" class="btn btn-primary btn-block" type="submit">
+      <div class="field">
+        <label class="label" for="signin-email">Email</label>
+        <input id="signin-email" class="input" type="email" name="email"
+               autocomplete="email" inputmode="email" required
+               placeholder="you@example.com" spellcheck="false">
+      </div>
+      <button id="signin-btn" class="btn btn-primary btn-block btn-lg" type="submit">
         Send magic link
       </button>
     </form>
@@ -65,48 +69,101 @@
 <!-- ── app ───────────────────────────────────────────────────────────────── -->
 <div id="app" class="app" hidden>
 
-  <header class="topbar">
-    <div class="topbar-in">
-      <div class="brand">REMENTO</div>
-      <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
-        <button class="tab" role="tab" data-tab="drill"    aria-selected="true">Drill</button>
-        <button class="tab" role="tab" data-tab="browse"   aria-selected="false">Browse</button>
-        <button class="tab" role="tab" data-tab="import"   aria-selected="false">Import</button>
-        <button class="tab" role="tab" data-tab="stats"    aria-selected="false">Stats</button>
-        <button class="tab tab-icon" role="tab" data-tab="settings" aria-selected="false"
-                aria-label="Settings" title="Settings">&#9881;</button>
-      </nav>
-      <div class="topbar-right">
-        <label class="edit-toggle" title="Edit mode (e)">
-          <input type="checkbox" id="edit-toggle">
-          <span class="edit-toggle-track" aria-hidden="true"></span>
-          <span class="edit-toggle-label">EDIT</span>
-        </label>
-      </div>
+  <!-- Desktop: a quiet sidebar. Below 900px this is hidden and the bottom
+       bar takes over — two compositions, not one shrunk. -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark" aria-hidden="true">R</span>
+      <span class="brand-word">Remento</span>
     </div>
-  </header>
 
-  <main class="panels">
-    <section class="panel" id="panel-drill"    role="tabpanel" aria-label="Drill"></section>
-    <section class="panel" id="panel-browse"   role="tabpanel" aria-label="Browse" hidden></section>
-    <section class="panel" id="panel-import"   role="tabpanel" aria-label="Import" hidden></section>
-    <section class="panel" id="panel-stats"    role="tabpanel" aria-label="Stats" hidden></section>
-    <section class="panel" id="panel-settings" role="tabpanel" aria-label="Settings" hidden></section>
-  </main>
+    <nav class="nav" id="nav" aria-label="Sections">
+      <div class="nav-group">
+        <div class="nav-group-label">Study</div>
+        <button class="nav-item" data-tab="drill"  aria-current="page">
+          <span class="nav-icon" data-icon="drill"></span><span class="nav-label">Drill</span>
+        </button>
+        <button class="nav-item" data-tab="browse">
+          <span class="nav-icon" data-icon="browse"></span><span class="nav-label">Browse</span>
+        </button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Manage</div>
+        <button class="nav-item" data-tab="import">
+          <span class="nav-icon" data-icon="import"></span><span class="nav-label">Import</span>
+        </button>
+        <button class="nav-item" data-tab="stats">
+          <span class="nav-icon" data-icon="stats"></span><span class="nav-label">Stats</span>
+        </button>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">System</div>
+        <button class="nav-item" data-tab="settings">
+          <span class="nav-icon" data-icon="settings"></span><span class="nav-label">Settings</span>
+        </button>
+      </div>
+    </nav>
 
-  <!-- Phone: the same tabs, bottom-anchored, where the thumb already is. -->
+    <div class="sidebar-foot">
+      <button class="palette-cue" id="palette-cue" type="button">
+        <span class="nav-icon" data-icon="search"></span>
+        <span class="nav-label">Search</span>
+        <kbd class="kbd">⌘K</kbd>
+      </button>
+      <label class="edit-toggle">
+        <input type="checkbox" id="edit-toggle">
+        <span class="edit-toggle-track" aria-hidden="true"></span>
+        <span class="edit-toggle-label">Edit mode</span>
+      </label>
+      <div class="sidebar-user" id="sidebar-user"></div>
+    </div>
+  </aside>
+
+  <div class="frame">
+    <!-- Contextual header. Each view fills the crumb and the actions slot;
+         no two screens are forced to carry the same chrome. -->
+    <header class="header" id="header">
+      <button class="header-menu" id="header-menu" type="button" aria-label="Sections">
+        <span class="nav-icon" data-icon="menu"></span>
+      </button>
+      <nav class="crumb" id="crumb" aria-label="Location"></nav>
+      <div class="header-actions" id="header-actions"></div>
+    </header>
+
+    <main class="panels" id="main">
+      <section class="panel" id="panel-drill"    role="tabpanel" aria-label="Drill"></section>
+      <section class="panel" id="panel-subject"  role="tabpanel" aria-label="Subject" hidden></section>
+      <section class="panel" id="panel-browse"   role="tabpanel" aria-label="Browse" hidden></section>
+      <section class="panel" id="panel-import"   role="tabpanel" aria-label="Import" hidden></section>
+      <section class="panel" id="panel-stats"    role="tabpanel" aria-label="Stats" hidden></section>
+      <section class="panel" id="panel-settings" role="tabpanel" aria-label="Settings" hidden></section>
+    </main>
+  </div>
+
+  <!-- Phone: bottom navigation, thumb-reachable, five destinations. -->
   <nav class="tabbar" id="tabbar" aria-label="Sections">
-    <button class="tabbar-btn" data-tab="drill"    aria-selected="true">Drill</button>
-    <button class="tabbar-btn" data-tab="browse"   aria-selected="false">Browse</button>
-    <button class="tabbar-btn" data-tab="import"   aria-selected="false">Import</button>
-    <button class="tabbar-btn" data-tab="stats"    aria-selected="false">Stats</button>
-    <button class="tabbar-btn" data-tab="settings" aria-selected="false">&#9881;</button>
+    <button class="tabbar-btn" data-tab="drill" aria-current="page">
+      <span class="nav-icon" data-icon="drill"></span><span>Drill</span>
+    </button>
+    <button class="tabbar-btn" data-tab="browse">
+      <span class="nav-icon" data-icon="browse"></span><span>Browse</span>
+    </button>
+    <button class="tabbar-btn" data-tab="import">
+      <span class="nav-icon" data-icon="import"></span><span>Import</span>
+    </button>
+    <button class="tabbar-btn" data-tab="stats">
+      <span class="nav-icon" data-icon="stats"></span><span>Stats</span>
+    </button>
+    <button class="tabbar-btn" data-tab="settings">
+      <span class="nav-icon" data-icon="settings"></span><span>Settings</span>
+    </button>
   </nav>
 </div>
 
 <!-- ── overlays ──────────────────────────────────────────────────────────── -->
 <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
 <div id="modal-root" class="modal-root" hidden></div>
+<div id="palette-root" class="palette-root" hidden></div>
 
 <script type="module" src="js/app.js"></script>
 </body>

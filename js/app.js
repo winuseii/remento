@@ -1,13 +1,12 @@
-// Boot, the session guard, tab switching, and the small amount of global state
-// the five views share.
+// Boot, the session guard, navigation, the contextual header, and the small
+// amount of global state the views share.
 
-import { $, $$, clear, toast, toastError, errorBlock, primeMath } from './ui.js';
+import { $, $$, clear, toast, toastError, errorBlock, primeMath, el } from './ui.js';
 import { signIn, signOut, getSession, onAuthChange, scrubAuthFromUrl } from './auth.js';
+import { icon } from './icons.js';
 import * as db from './db.js';
 
 // ── global state ────────────────────────────────────────────────────────────
-// One object, passed to every view. Views read it; only app.js and the
-// settings view write to it.
 
 export const state = {
   user: null,
@@ -23,7 +22,6 @@ export const state = {
 
 const listeners = new Set();
 
-/** Subscribe to structure/settings changes. Returns an unsubscribe function. */
 export function onStateChange(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);
@@ -35,62 +33,117 @@ export function emitStateChange(what = 'structure') {
   }
 }
 
-/** Re-read the semester/subject/unit tree after the settings view edits it. */
 export async function refreshStructure() {
   const { semesters, subjects, units } = await db.loadStructure();
   Object.assign(state, { semesters, subjects, units });
   emitStateChange('structure');
 }
 
+// ── contextual header ───────────────────────────────────────────────────────
+// Each screen owns its own chrome. Drill wants almost none; Browse wants
+// search; Import wants a destination. Forcing one bar onto all of them is what
+// makes an app feel like a template.
+
+/**
+ * @param {{crumb?: (string|Node)[], actions?: Node[]}} spec
+ */
+export function setHeader({ crumb = [], actions = [] } = {}) {
+  const crumbEl = $('#crumb');
+  const actionsEl = $('#header-actions');
+  clear(crumbEl);
+  clear(actionsEl);
+
+  crumb.forEach((part, i) => {
+    if (i) crumbEl.append(el('span', { class: 'crumb-sep', 'aria-hidden': 'true' }, '/'));
+    const last = i === crumb.length - 1;
+    crumbEl.append(
+      part instanceof Node ? part
+        : el('span', { class: last ? 'crumb-part is-current' : 'crumb-part' }, part),
+    );
+  });
+
+  for (const a of actions) actionsEl.append(a);
+}
+
 // ── view registry ───────────────────────────────────────────────────────────
-// Views are lazy: Browse and Stats are not parsed until you open them.
 
 const VIEWS = {
   drill: () => import('./views/drill.js'),
+  subject: () => import('./views/subject.js'),
   browse: () => import('./views/browse.js'),
   import: () => import('./views/import.js'),
   stats: () => import('./views/stats.js'),
   settings: () => import('./views/settings.js'),
 };
 
-const mounted = new Map();   // tab -> { teardown }
+/** Which nav entry lights up for a given view. Subject lives under Browse. */
+const NAV_FOR = { drill: 'drill', subject: 'browse', browse: 'browse', import: 'import', stats: 'stats', settings: 'settings' };
 
-async function showTab(tab) {
+const mounted = new Map();
+let navArgs = null;
+
+/** Navigate. `args` is handed to the view's render as ctx.args. */
+export async function showTab(tab, args = null) {
   if (!VIEWS[tab]) tab = 'drill';
   state.tab = tab;
+  navArgs = args;
 
+  const navKey = NAV_FOR[tab];
   for (const btn of $$('[data-tab]')) {
-    btn.setAttribute('aria-selected', String(btn.dataset.tab === tab));
+    const on = btn.dataset.tab === navKey;
+    btn.classList.toggle('is-active', on);
+    if (on) btn.setAttribute('aria-current', 'page');
+    else btn.removeAttribute('aria-current');
   }
-  for (const panel of $$('.panel')) {
-    panel.hidden = panel.id !== `panel-${tab}`;
-  }
+  for (const panel of $$('.panel')) panel.hidden = panel.id !== `panel-${tab}`;
 
+  closeDrawer();
   const panel = $(`#panel-${tab}`);
   if (!panel) return;
 
-  // Views re-render on every visit; they are cheap and the data moves.
   mounted.get(tab)?.teardown?.();
   mounted.delete(tab);
   clear(panel);
+  setHeader();
 
   try {
     const mod = await VIEWS[tab]();
-    const handle = await mod.render(panel, { state, refreshStructure, onStateChange });
+    const handle = await mod.render(panel, {
+      state, args, refreshStructure, onStateChange, setHeader, navigate: showTab,
+    });
     if (handle) mounted.set(tab, handle);
   } catch (err) {
     clear(panel);
-    panel.append(errorBlock(err, () => showTab(tab)));
+    panel.append(el('div', { class: 'wrap' }, errorBlock(err, () => showTab(tab, args))));
     console.error(`[${tab}] failed to render`, err);
   }
 
   try { history.replaceState(null, '', `#${tab}`); } catch { /* file:// */ }
+  $('#main')?.scrollTo?.({ top: 0 });
 }
 
-function wireTabs() {
+// ── chrome wiring ───────────────────────────────────────────────────────────
+
+function mountIcons(root = document) {
+  for (const slot of root.querySelectorAll('[data-icon]')) {
+    if (slot.firstChild) continue;
+    slot.append(icon(slot.dataset.icon, { size: Number(slot.dataset.size) || 17 }));
+  }
+}
+
+function openDrawer() { $('#app').classList.add('drawer-open'); }
+function closeDrawer() { $('#app')?.classList.remove('drawer-open'); }
+
+function wireChrome() {
+  mountIcons();
+
   for (const btn of $$('[data-tab]')) {
     btn.addEventListener('click', () => showTab(btn.dataset.tab));
   }
+
+  $('#header-menu').addEventListener('click', () => {
+    $('#app').classList.toggle('drawer-open');
+  });
 
   const toggle = $('#edit-toggle');
   toggle.addEventListener('change', () => {
@@ -98,21 +151,37 @@ function wireTabs() {
     emitStateChange('editMode');
   });
 
-  // Keyboard on desktop. Every shortcut also has a visible control;
-  // the drill view binds space / enter / 1-4 itself.
+  $('#palette-cue').addEventListener('click', () => openPalette());
+
   document.addEventListener('keydown', (e) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
     const t = e.target;
-    if (t instanceof HTMLElement &&
-        (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return;
-    if (!$('#modal-root').hidden) return;
+    const typing = t instanceof HTMLElement
+      && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
+
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      openPalette();
+      return;
+    }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (typing || !$('#modal-root').hidden || !$('#palette-root').hidden) return;
 
     if (e.key === 'e' || e.key === 'E') {
       e.preventDefault();
       toggle.checked = !toggle.checked;
       toggle.dispatchEvent(new Event('change'));
     }
+    if (e.key === 'Escape') closeDrawer();
   });
+}
+
+async function openPalette() {
+  const { openPalette: open } = await import('./command-palette.js');
+  open({ state, navigate: showTab, setEdit: (on) => {
+    const t = $('#edit-toggle');
+    t.checked = on;
+    t.dispatchEvent(new Event('change'));
+  } });
 }
 
 // ── sign in ─────────────────────────────────────────────────────────────────
@@ -169,24 +238,26 @@ async function startApp(session) {
   state.user = session.user;
 
   try {
-    // First-run bootstrap creates the settings row and nothing else.
     state.settings = await db.loadSettings();
     await refreshStructure();
     showScreen('app');
     primeMath();
 
+    const email = state.user?.email ?? '';
+    const user = $('#sidebar-user');
+    clear(user);
+    user.append(
+      el('span', { class: 'user-dot', 'aria-hidden': 'true' }, (email[0] ?? '?').toUpperCase()),
+      el('span', { class: 'user-email' }, email),
+    );
+
     const tab = (location.hash || '').replace('#', '');
     await showTab(VIEWS[tab] ? tab : 'drill');
 
-    // Housekeeping, after the UI is up so it never delays first paint.
     db.purgeTrash()
       .then((n) => { if (n) console.info(`Purged ${n} card(s) from trash.`); })
       .catch((e) => console.warn('Trash purge failed:', e.message));
   } catch (err) {
-    // A stored session that the server no longer accepts — an expired refresh
-    // token after a long gap is the normal cause. Stranding the user on the
-    // app shell behind a Retry button they can never satisfy is the wrong
-    // answer; drop them back to sign-in and say why.
     if (isAuthFailure(err)) {
       starting = false;
       await signOut().catch(() => {});
@@ -196,26 +267,21 @@ async function startApp(session) {
       msg.className = 'signin-msg is-err';
       return;
     }
-
     showScreen('app');
     const panel = $('#panel-drill');
     clear(panel);
-    panel.append(errorBlock(err, () => { starting = false; startApp(session); }));
+    panel.append(el('div', { class: 'wrap' }, errorBlock(err, () => { starting = false; startApp(session); })));
     toastError('Could not load your account', err);
   } finally {
     starting = false;
   }
 }
 
-/** Does this error mean the session is no longer good? */
+/** Does this error mean the stored session is no longer good? */
 function isAuthFailure(err) {
   const msg = String(err?.message ?? '').toLowerCase();
-  return msg.includes('not signed in')
-    || msg.includes('jwt')
-    || msg.includes('token')
-    || msg.includes('session')
-    || err?.status === 401
-    || err?.status === 403;
+  return msg.includes('not signed in') || msg.includes('jwt') || msg.includes('token')
+    || msg.includes('session') || err?.status === 401 || err?.status === 403;
 }
 
 function stopApp() {
@@ -241,7 +307,7 @@ export async function doSignOut() {
 
 async function boot() {
   wireSignIn();
-  wireTabs();
+  wireChrome();
 
   onAuthChange((event, session) => {
     if (event === 'SIGNED_IN' && session && !state.user) { scrubAuthFromUrl(); startApp(session); }

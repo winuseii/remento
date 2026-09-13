@@ -22,9 +22,9 @@ const MODES = [
 ];
 
 export async function render(panel, ctx) {
-  const { state, onStateChange } = ctx;
+  const { state, onStateChange, setHeader, navigate } = ctx;
 
-  const root = el('div', { class: 'wrap-narrow' });
+  const root = el('div', { class: 'wrap-narrow drill-root' });
   panel.append(root);
 
   /** null until a session starts; the setup screen is shown meanwhile. */
@@ -253,11 +253,28 @@ export async function render(panel, ctx) {
     const done = Math.min(session.index, size);
     // Cards past the original queue length are Again requeues being re-shown.
     const redo = session.queue.length - Math.max(session.index, size);
-    const bar = el('div', { class: 'progress' },
-      el('div', { class: 'progress-fill', style: `width:${(done / size) * 100}%` }));
+    const pct = Math.round((done / size) * 100);
+    const bar = el('div', { class: 'progress-block' },
+      el('div', {
+        class: 'progress', role: 'progressbar',
+        'aria-valuenow': String(done), 'aria-valuemin': '0', 'aria-valuemax': String(size),
+        'aria-label': `${done} of ${size} cards graded`,
+      }, el('div', { class: 'progress-fill', style: `width:${pct}%` })),
+      el('span', { class: 'progress-pct' }, `${pct}%`));
 
     const subject = state.subjects.find((s) => s.id === card.subject_id);
     const unit = state.units.find((u) => u.id === card.unit_id);
+
+    setHeader({
+      crumb: [subject?.name ?? 'All subjects', unit ? `Unit ${String(unit.no).padStart(2, '0')}` : 'All units'],
+      actions: [
+        session.mode !== 'drill' ? el('span', { class: 'badge badge-mode' }, session.mode) : null,
+        el('button', {
+          class: 'btn btn-sm btn-ghost', type: 'button',
+          onclick: () => endSession(),
+        }, 'End session'),
+      ].filter(Boolean),
+    });
 
     const head = el('div', { class: 'drill-head' },
       el('span', { class: 'drill-count num' },
@@ -266,17 +283,11 @@ export async function render(panel, ctx) {
       el('span', { class: 'drill-where' },
         [subject?.name, unit ? `Unit ${unit.no}` : null].filter(Boolean).join('  ·  ')),
       el('span', { class: 'row-actions' },
-        session.mode !== 'drill'
-          ? el('span', { class: 'badge badge-mode' }, session.mode) : null,
         state.editMode
           ? el('button', {
             class: 'btn btn-sm btn-ghost', type: 'button', title: 'Edit this card (e)',
             onclick: () => openEditor(card),
           }, '✎') : null,
-        el('button', {
-          class: 'btn btn-sm btn-ghost', type: 'button', title: 'End session',
-          onclick: () => endSession(),
-        }, 'End'),
       ),
     );
 

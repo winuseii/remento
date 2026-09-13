@@ -1,80 +1,198 @@
-/* Remento design tokens. Dark only — there is no light theme.
-   Do not invent colours; if you need one that isn't here, say so.
+/* ===========================================================================
+   REMENTO — DESIGN TOKENS
+   "Modern Scholarly Instrument"
 
-   The colour palette below is unchanged from v1. The type scale and spacing
-   were extended during the redesign: the original scale ran from 10.5px to
-   21px, which left no room for hierarchy — every screen came out the same
-   weight. Everything added here is a size or a duration, never a colour. */
+   Dark only. There is no light theme and no automatic switching.
+
+   Every visual value in the application resolves through this file. If a
+   component needs a number that is not here, the question is whether the
+   scale is wrong — not whether to hardcode it.
+
+   Three families, two superfamilies:
+     serif  Newsreader      study prompts, editorial headings
+     sans   IBM Plex Sans   UI, answers, controls, settings
+     mono   IBM Plex Mono   metadata, counts, intervals, tags, tables
+
+   Plex Sans and Plex Mono are the same superfamily, so the interface reads
+   as one voice and costs one extra font request rather than two.
+   =========================================================================== */
+
 :root {
-  /* surfaces */
-  --bg:        #0A0B0D;
-  --surface:   #131519;
-  --surface-2: #1A1D22;
-  --line:      #24282E;
-  --line-2:    #363C45;
+  /* ── colour: ground and structure ──────────────────────────────────────
+     Four surface levels, used semantically:
+       0  page            1  working surface
+       2  interactive     3  floating (modal, toast, palette)          */
+  --bg:        #0B0C0E;
+  --surface:   #111317;
+  --surface-2: #171A1F;
+  --surface-3: #1D2127;
 
-  /* text */
-  --tx:   #E9E7E3;
-  --tx-2: #A0A39A;
-  --tx-3: #6B6F76;
+  --line:      #242830;   /* structural hairline */
+  --line-2:    #343A44;   /* emphasis border, control outline */
 
-  /* brand — scarlet. The ONLY filled scarlet control on the drill
-     screen is "Show answer". */
+  /* ── colour: text ──────────────────────────────────────────────────── */
+  --tx:   #F0EEE9;        /* primary — questions, answers, values */
+  --tx-2: #A7AAA4;        /* secondary — supporting prose */
+  --tx-3: #70757D;        /* tertiary — labels, meta, placeholders */
+
+  /* ── colour: brand ─────────────────────────────────────────────────────
+     Scarlet is rare on purpose. It means: active, primary, current,
+     important — and destructive only where genuinely destructive.
+     It does not decorate.                                              */
   --sc:     #EF3B42;
-  --sc-hi:  #FF5C62;
-  --sc-dim: #7A1F24;
-  --sc-bg:  #2A1013;
+  --sc-hi:  #FF6268;
+  --sc-dim: #7F2429;
+  --sc-bg:  #291013;
 
-  /* grade buttons — outline + coloured left edge + coloured label.
-     Never filled: a filled red button would fight the brand. */
+  /* ── colour: grades ────────────────────────────────────────────────────
+     Also serve as the semantic state set, which is separate from the
+     brand accent: again=error, hard=warning, good=success, easy=info. */
   --g-again: #F2555A;
   --g-hard:  #D9822B;
   --g-good:  #3FB27F;
   --g-easy:  #4B8BD4;
 
-  /* type */
-  --serif: 'Newsreader', Georgia, 'Times New Roman', serif;      /* drill questions only */
+  /* Tints, for selected and suggested states. Derived, never invented. */
+  --g-again-bg: color-mix(in srgb, var(--g-again) 12%, transparent);
+  --g-hard-bg:  color-mix(in srgb, var(--g-hard)  12%, transparent);
+  --g-good-bg:  color-mix(in srgb, var(--g-good)  12%, transparent);
+  --g-easy-bg:  color-mix(in srgb, var(--g-easy)  12%, transparent);
+
+  /* ── type: families ────────────────────────────────────────────────── */
+  --serif: 'Newsreader', 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --sans:  'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
   --mono:  'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  --sans:  -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Helvetica, Arial, sans-serif;
 
-  /* The drill surface. Serif, and deliberately much larger than the
-     instrument screens — this is the one thing you are looking at. */
-  --fs-question: 30px;
-  --fs-answer:   17px;
+  /* ── type: study scale (serif, fluid) ──────────────────────────────────
+     The question is the most important text in the product. It scales
+     with the viewport rather than stepping at a breakpoint, because it
+     is read for hours and 500 cards in a row.                          */
+  --fs-question:  clamp(26px, 1.35rem + 1.35vw, 44px);
+  --fs-question-sm: clamp(22px, 1.2rem + .9vw, 30px);  /* browse expand, dense contexts */
+  --fs-answer:    clamp(15.5px, .95rem + .18vw, 17.5px);
+  --fs-answer-lg: 19px;                                 /* numerical values */
 
-  /* The instrument surfaces. */
-  --fs-display:  40px;   /* stat numbers */
-  --fs-title:    19px;   /* page titles */
-  --fs-lead:     15px;   /* section headings, table of contents */
-  --fs-body:     14.5px;
-  --fs-small:    13px;
-  --fs-micro:    11.5px; /* table cells, meta */
-  --fs-label:    10.5px; /* mono, uppercase, letterspaced */
-  --ls-label:    .13em;
-  --ls-brand:    .28em;
+  /* ── type: interface scale (sans) ──────────────────────────────────── */
+  --fs-display: clamp(30px, 1.5rem + 1.3vw, 42px);  /* stat numbers */
+  --fs-h1:      clamp(21px, 1.1rem + .7vw, 27px);   /* screen titles */
+  --fs-h2:      18px;                                /* section headings */
+  --fs-lead:    15.5px;                              /* subject names, list rows */
+  --fs-body:    14.5px;
+  --fs-small:   13px;
+  --fs-micro:   12px;
 
-  /* Measure. Long-form reading wants a shorter line than a data table. */
-  --measure: 60ch;
+  /* ── type: technical scale (mono) ──────────────────────────────────── */
+  --fs-data:    12.5px;   /* table cells, intervals, counts */
+  --fs-label:   10.5px;   /* uppercase labels */
+  --fs-key:     10px;     /* keyboard hints */
 
-  /* spacing + shape */
-  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
-  --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 72px; --sp-9: 112px;
-  --r-sm: 4px;  --r:    7px;  --r-lg: 10px;
+  /* ── type: metrics ─────────────────────────────────────────────────── */
+  --lh-tight: 1.2;
+  --lh-head:  1.28;
+  --lh-snug:  1.45;
+  --lh-body:  1.62;
+  --lh-read:  1.75;   /* answer bodies — long-session comfort */
 
-  --tap: 44px;            /* minimum touch target */
-  --maxw: 720px;          /* drill column */
-  --maxw-wide: 1240px;    /* browse / stats */
+  --ls-tight: -.021em; /* large serif */
+  --ls-head:  -.012em; /* sans headings */
+  --ls-label:  .12em;  /* uppercase mono labels */
+  --ls-brand:  .2em;
 
-  /* motion */
-  --t-fast: .12s cubic-bezier(.4, 0, .2, 1);
-  --t-med:  .22s cubic-bezier(.4, 0, .2, 1);
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semi:   600;
+
+  /* Reading measure. The drill column is set to this, not to a pixel box. */
+  --measure:      68ch;
+  --measure-tight: 58ch;
+
+  /* ── space ─────────────────────────────────────────────────────────────
+     A 4px base. --density scales the gaps a screen actually uses, so
+     Drill can breathe and Browse can be tight without either inventing
+     its own numbers.                                                   */
+  --sp-0: 2px;
+  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+  --sp-5: 20px;  --sp-6: 24px;  --sp-7: 32px;  --sp-8: 40px;
+  --sp-9: 56px;  --sp-10: 72px; --sp-11: 96px; --sp-12: 128px;
+
+  --density: 1;
+
+  /* ── shape ─────────────────────────────────────────────────────────────
+     Restrained. Full rounding is reserved for things whose shape means
+     something: toggles, status dots, avatars.                          */
+  --r-xs: 3px;
+  --r-sm: 4px;
+  --r:    6px;
+  --r-lg: 10px;
+  --r-full: 999px;
+
+  /* ── controls ──────────────────────────────────────────────────────── */
+  --tap:        44px;   /* accessibility floor, never go under */
+  --tap-lg:     48px;   /* major touch actions */
+  --ctl-sm:     30px;
+  --ctl:        36px;
+  --ctl-lg:     44px;
+  --border:     1px;
+  --border-2:   1.5px;
+
+  /* ── layout ────────────────────────────────────────────────────────── */
+  --sidebar:      240px;
+  --sidebar-slim: 64px;
+  --header:       56px;
+  --navbar:       58px;   /* mobile bottom nav, before safe area */
+  --content-max:  1180px;
+  --read-max:     740px;  /* drill column ceiling */
+
+  /* ── elevation ─────────────────────────────────────────────────────────
+     Shadows only where something genuinely floats. Everything else is a
+     surface step or a hairline.                                        */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .3);
+  --shadow-2: 0 8px 24px -6px rgba(0, 0, 0, .5);
+  --shadow-3: 0 20px 56px -12px rgba(0, 0, 0, .62);
+
+  /* ── motion ────────────────────────────────────────────────────────────
+     Fast, intentional, quiet. Nothing in everyday use runs past 320ms.  */
+  --t-micro: 120ms;
+  --t-fast:  170ms;
+  --t-med:   240ms;
+  --t-slow:  320ms;
+
+  --ease:     cubic-bezier(.4, 0, .2, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --ease-in:  cubic-bezier(.4, 0, 1, 1);
+
+  /* ── focus ─────────────────────────────────────────────────────────── */
+  --focus-w: 2px;
+  --focus-offset: 2px;
+  --focus: var(--sc);
+
+  /* ── z-index ───────────────────────────────────────────────────────── */
+  --z-nav: 30;
+  --z-sticky: 25;
+  --z-toast: 70;
+  --z-modal: 80;
+  --z-palette: 90;
 }
 
-@media (max-width: 720px) {
+/* ── density per screen ───────────────────────────────────────────────────
+   Applied on the view root. Intentional difference, not drift. */
+.d-low    { --density: 1.3; }   /* drill */
+.d-normal { --density: 1; }     /* subject, import, stats */
+.d-high   { --density: .8; }    /* browse */
+
+/* ── tablet and below ─────────────────────────────────────────────────── */
+@media (max-width: 900px) {
   :root {
-    --fs-question: 23px;
-    --fs-answer:   16px;
-    --fs-display:  30px;
-    --fs-title:    16px;
+    --header: 52px;
+    --measure: 100%;
+  }
+}
+
+/* ── phone ────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  :root {
+    --fs-h1: 20px;
+    --fs-display: 28px;
+    --sp-9: 40px; --sp-10: 48px; --sp-11: 64px; --sp-12: 80px;
   }
 }

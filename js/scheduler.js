@@ -108,6 +108,42 @@ export function suggestedGrade(ticked, total) {
   return 0;
 }
 
+/**
+ * Readiness, from docs/SPEC.md §6.3.
+ *
+ *   Readiness = 100 x (0.45·Maturity + 0.35·Retention + 0.20·Freshness)
+ *
+ * The spec is emphatic that this number measures how well you know the cards
+ * you have made, and says nothing about whether those cards cover the
+ * syllabus. It is never rendered alone — `honest` is false when the subject
+ * has no declared unit count, and the UI greys the figure out and shows
+ * "Coverage: undeclared" beside it. A confident number with no denominator is
+ * worse than no number.
+ *
+ * @param {{cards: {ivl:number, due:string, reps:number}[], retentionPct: number|null,
+ *          unitsDeclared: number|null, today?: string}} input
+ */
+export function readiness({ cards = [], retentionPct = null, unitsDeclared = null, today = toIso(new Date()) }) {
+  if (!cards.length) {
+    return { score: null, maturity: 0, retention: null, freshness: 0, honest: unitsDeclared != null };
+  }
+
+  const maturity = cards.filter((c) => (c.ivl ?? 0) >= 14).length / cards.length;
+  const freshness = cards.filter((c) => String(c.due) >= today).length / cards.length;
+  // With no reviews yet there is no retention signal; the spec's weights then
+  // have nothing to weigh, so the score stays null rather than guessing.
+  if (retentionPct == null) {
+    return { score: null, maturity, retention: null, freshness, honest: unitsDeclared != null };
+  }
+  const retention = retentionPct / 100;
+
+  return {
+    score: Math.round(100 * (0.45 * maturity + 0.35 * retention + 0.20 * freshness)),
+    maturity, retention, freshness,
+    honest: unitsDeclared != null,
+  };
+}
+
 /** Maturity bucket, matching the split Stats reports. */
 export function maturity(card) {
   if (!(card?.reps > 0)) return 'new';
