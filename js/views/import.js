@@ -17,7 +17,7 @@ const TYPE_LABEL = {
 };
 
 export async function render(panel, ctx) {
-  const { state, refreshStructure } = ctx;
+  const { state, refreshStructure, setHeader } = ctx;
 
   const root = el('div', { class: 'wrap' });
   panel.append(root);
@@ -35,16 +35,23 @@ export async function render(panel, ctx) {
   const sourceBox = el('div');
   const previewBox = el('div');
 
+  /** The pipeline's current state, named, so the header can report it. */
+  const stage = () => {
+    if (!view.parsed) return 'Waiting for a payload';
+    if (view.parsed.errors.length && !view.parsed.cards.length) return 'Malformed';
+    if (!view.dest.subjectId) return 'Choose a destination';
+    if (!view.plan) return 'Checking duplicates';
+    return 'Ready to review';
+  };
+
   const draw = () => {
     clear(root);
-    root.append(
-      el('div', { class: 'page-head' },
-        el('h2', { class: 'page-title' }, 'Import'),
-        el('p', { class: 'page-sub' },
-          view.parsed ? `${view.parsed.format} payload` : 'JSON or text'),
-      ),
-      sourceBox, previewBox,
-    );
+    setHeader({
+      crumb: ['Import', stage()],
+      actions: [el('span', { class: 'hint' },
+        view.parsed ? `${view.parsed.format} · ${view.parsed.cards.length} parsed` : '')],
+    });
+    root.append(sourceBox, previewBox);
   };
 
   // ── source ────────────────────────────────────────────────────────────────

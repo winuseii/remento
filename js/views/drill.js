@@ -276,12 +276,14 @@ export async function render(panel, ctx) {
       ].filter(Boolean),
     });
 
+    // Location lives in the contextual header now, so the card carries only
+    // the counter. Saying "Thermodynamics · Unit 1" twice on a 375px screen
+    // is chrome competing with the question.
     const head = el('div', { class: 'drill-head' },
       el('span', { class: 'drill-count num' },
         session.index < size ? `${session.index + 1} / ${size}` : `${size} / ${size}`),
       redo > 0 ? el('span', { class: 'drill-redo num' }, `+${redo} to redo`) : null,
-      el('span', { class: 'drill-where' },
-        [subject?.name, unit ? `Unit ${unit.no}` : null].filter(Boolean).join('  ·  ')),
+      el('span', { class: 'drill-where' }),
       el('span', { class: 'row-actions' },
         state.editMode
           ? el('button', {

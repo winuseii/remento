@@ -1,80 +1,129 @@
-// Settings — daily limits, the semester/subject/unit editor, and sign-out.
-// An instrument screen: mono, dense, no decoration.
+// Settings — sectioned, the way a mature application settings screen is (§29).
+//
+// Desktop puts a section list beside the content. Phone shows the list, and
+// choosing a section replaces it — list, then detail, rather than one very
+// long scroll.
+//
+// The sections are only the ones that exist. Export and a Trash screen are in
+// the brief but not in the codebase, and a settings menu that leads nowhere is
+// worse than a shorter menu.
 
 import {
   el, clear, toast, toastError, confirmDialog, promptDialog, pluralise,
 } from '../ui.js';
+import { icon } from '../icons.js';
 import * as db from '../db.js';
 import { DEFAULTS } from '../config.js';
 import { doSignOut } from '../app.js';
 
-export async function render(panel, ctx) {
-  const { state, refreshStructure } = ctx;
+const SECTIONS = [
+  { id: 'study', label: 'Study', blurb: 'Session size and the daily caps.' },
+  { id: 'structure', label: 'Structure', blurb: 'Semesters, subjects and units.' },
+  { id: 'data', label: 'Data', blurb: 'Trash and what the app deletes for you.' },
+  { id: 'account', label: 'Account', blurb: 'Who you are signed in as.' },
+];
 
-  const root = el('div', { class: 'wrap' });
+export async function render(panel, ctx) {
+  const { state, refreshStructure, setHeader, navigate } = ctx;
+
+  const root = el('div', { class: 'wrap settings-root' });
   panel.append(root);
+
+  // On a phone the list is a screen of its own; on desktop both are visible.
+  let current = window.matchMedia('(max-width: 900px)').matches ? null : 'study';
 
   const draw = () => {
     clear(root);
+    const section = SECTIONS.find((s) => s.id === current);
+    setHeader({
+      crumb: section ? ['Settings', section.label] : ['Settings'],
+      actions: [],
+    });
+
     root.append(
-      el('div', { class: 'page-head' },
-        el('h2', { class: 'page-title' }, 'Settings'),
-        el('p', { class: 'page-sub' }, state.user?.email ?? ''),
+      el('div', { class: current ? 'settings-shell has-detail' : 'settings-shell' },
+        sectionNav(),
+        current ? el('div', { class: 'settings-detail' }, body(section)) : null,
       ),
-      limitsPanel(state),
-      structurePanel(state, refreshStructure, draw),
-      accountPanel(),
     );
   };
+
+  function sectionNav() {
+    return el('nav', { class: 'settings-nav', 'aria-label': 'Settings sections' },
+      SECTIONS.map((s) => {
+        const on = s.id === current;
+        const b = el('button', {
+          class: on ? 'settings-nav-item is-active' : 'settings-nav-item',
+          type: 'button', 'aria-current': on ? 'true' : null,
+        },
+          el('span', { class: 'settings-nav-label' }, s.label),
+          el('span', { class: 'settings-nav-blurb' }, s.blurb),
+          el('span', { class: 'settings-nav-chev', 'aria-hidden': 'true' }, icon('chevron', { size: 15 })),
+        );
+        b.addEventListener('click', () => { current = s.id; draw(); });
+        return b;
+      }),
+    );
+  }
+
+  function body(section) {
+    switch (section?.id) {
+      case 'structure': return structureSection(state, refreshStructure, draw);
+      case 'data': return dataSection(navigate);
+      case 'account': return accountSection(state);
+      case 'study':
+      default: return studySection(state);
+    }
+  }
 
   draw();
   return { teardown() { clear(root); } };
 }
 
-// ── daily limits ────────────────────────────────────────────────────────────
+// ── study ───────────────────────────────────────────────────────────────────
 
-function limitsPanel(state) {
+function studySection(state) {
   const s = state.settings ?? db.defaultSettings();
 
-  const num = (name, value, min, max, hint) => {
+  const num = (key, label, value, min, max, hint) => {
     const input = el('input', {
-      class: 'input', type: 'number', min, max, step: 1, value, name,
-      inputmode: 'numeric',
+      class: 'input', type: 'number', min, max, step: 1, value,
+      inputmode: 'numeric', id: `set-${key}`,
     });
     return {
-      input,
-      node: el('label', { class: 'field' },
-        el('span', { class: 'label' }, name),
+      key, input,
+      node: el('div', { class: 'field' },
+        el('label', { class: 'label', for: `set-${key}` }, label),
         input,
-        el('span', { class: 'hint' }, hint),
-      ),
+        el('span', { class: 'hint' }, hint)),
     };
   };
 
-  const size = num('Session size', s.sessionSize, 1, 500, 'Cards before the finish line.');
-  const fresh = num('New per day', s.newPerDay, 0, 500, 'Unseen cards introduced daily.');
-  const revs = num('Reviews per day', s.reviewsPerDay, 0, 2000, 'Cap on scheduled reviews.');
+  const fields = [
+    num('sessionSize', 'Session size', s.sessionSize, 1, 500, 'Cards before the finish line. A visible end is what makes a session start.'),
+    num('newPerDay', 'New per day', s.newPerDay, 0, 500, 'Unseen cards introduced daily.'),
+    num('reviewsPerDay', 'Reviews per day', s.reviewsPerDay, 0, 2000, 'Cap on scheduled reviews.'),
+  ];
 
   const save = el('button', { class: 'btn btn-primary', type: 'submit' }, 'Save limits');
-
-  const form = el('form', { class: 'settings-grid' }, size.node, fresh.node, revs.node);
+  const form = el('form', { class: 'settings-grid' }, fields.map((f) => f.node));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const next = {
       ...s,
-      sessionSize: clampInt(size.input.value, 1, 500, DEFAULTS.sessionSize),
-      newPerDay: clampInt(fresh.input.value, 0, 500, DEFAULTS.newPerDay),
-      reviewsPerDay: clampInt(revs.input.value, 0, 2000, DEFAULTS.reviewsPerDay),
+      sessionSize: clampInt(fields[0].input.value, 1, 500, DEFAULTS.sessionSize),
+      newPerDay: clampInt(fields[1].input.value, 0, 500, DEFAULTS.newPerDay),
+      reviewsPerDay: clampInt(fields[2].input.value, 0, 2000, DEFAULTS.reviewsPerDay),
     };
     save.disabled = true;
     const label = save.textContent;
     save.textContent = 'Saving…';
     try {
       state.settings = await db.saveSettings(next);
-      size.input.value = next.sessionSize;
-      fresh.input.value = next.newPerDay;
-      revs.input.value = next.reviewsPerDay;
+      fields[0].input.value = next.sessionSize;
+      fields[1].input.value = next.newPerDay;
+      fields[2].input.value = next.reviewsPerDay;
       toast('Limits saved.', 'ok');
     } catch (err) {
       toastError('Could not save limits', err);
@@ -86,8 +135,8 @@ function limitsPanel(state) {
 
   form.append(el('div', { class: 'settings-actions' }, save));
 
-  return el('section', { class: 'card-panel' },
-    el('h3', { class: 'panel-title' }, 'Daily limits'),
+  return el('div', {},
+    sectionHead('Daily limits', 'These caps apply across every subject. Drill fills reviews before new cards, so a backlog is never buried under fresh material.'),
     form,
   );
 }
@@ -100,7 +149,7 @@ function clampInt(v, min, max, fallback) {
 
 // ── structure ───────────────────────────────────────────────────────────────
 
-function structurePanel(state, refreshStructure, redraw) {
+function structureSection(state, refreshStructure, redraw) {
   const body = el('div', { class: 'tree' });
 
   const busy = async (fn, okMsg) => {
@@ -117,30 +166,25 @@ function structurePanel(state, refreshStructure, redraw) {
   if (!state.semesters.length) {
     body.append(el('div', { class: 'empty' },
       el('p', { class: 'empty-title' }, 'No semesters yet'),
-      el('p', {}, 'Create one, then add subjects and units inside it. Nothing is seeded for you.'),
-    ));
+      el('p', {}, 'Create one, then add subjects and units inside it. Nothing is seeded for you.')));
   }
+  for (const sem of state.semesters) body.append(semesterNode(sem, state, busy));
 
-  for (const sem of state.semesters) {
-    body.append(semesterNode(sem, state, busy));
-  }
-
-  const addSem = el('button', { class: 'btn btn-sm', type: 'button' }, '+ Semester');
+  const addSem = el('button', { class: 'btn btn-sm', type: 'button' },
+    icon('plus', { size: 14 }), 'Semester');
   addSem.addEventListener('click', async () => {
     const label = await promptDialog({
       title: 'New semester', label: 'Label', placeholder: 'Semester 3', confirmLabel: 'Create',
     });
     if (!label) return;
-    busy(() => db.createSemester({
-      slug: slugify(label), label, position: state.semesters.length,
-    }), `Created ${label}.`);
+    busy(() => db.createSemester({ slug: slugify(label), label, position: state.semesters.length }),
+      `Created ${label}.`);
   });
 
-  return el('section', { class: 'card-panel' },
-    el('div', { class: 'panel-head' },
-      el('h3', { class: 'panel-title' }, 'Structure'),
-      addSem,
-    ),
+  return el('div', {},
+    el('div', { class: 'settings-head-row' },
+      sectionHead('Structure', 'Semester, then subject, then unit. Declared unit counts are what let the coverage figure be honest.'),
+      addSem),
     body,
   );
 }
@@ -153,9 +197,8 @@ function semesterNode(sem, state, busy) {
     if (!label || label === sem.label) return;
     busy(() => db.updateSemester(sem.id, { label }), 'Renamed.');
   };
-
   const remove = async () => {
-    const n = state.subjects.filter((s) => s.semester_id === sem.id).length;
+    const n = subjects.length;
     const ok = await confirmDialog({
       title: `Delete ${sem.label}?`,
       message: n
@@ -165,7 +208,6 @@ function semesterNode(sem, state, busy) {
     });
     if (ok) busy(() => db.deleteSemester(sem.id), `Deleted ${sem.label}.`);
   };
-
   const addSubject = async () => {
     const name = await promptDialog({
       title: `New subject in ${sem.label}`, label: 'Name',
@@ -180,13 +222,12 @@ function semesterNode(sem, state, busy) {
   return el('div', { class: 'tree-sem' },
     el('div', { class: 'tree-row tree-row-sem' },
       el('span', { class: 'tree-name' }, sem.label),
-      el('span', { class: 'tree-meta num' }, pluralise(subjects.length, 'subject')),
+      el('span', { class: 'tree-meta' }, pluralise(subjects.length, 'subject')),
       el('span', { class: 'row-actions' },
-        moveButtons(sem, state.semesters, (id, position) =>
-          busy(() => db.updateSemester(id, { position }))),
-        el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: rename }, 'Rename'),
-        el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: addSubject }, '+ Subject'),
-        el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: remove, title: 'Delete semester' }, '×'),
+        moveButtons(sem, state.semesters, (id, position) => busy(() => db.updateSemester(id, { position }))),
+        iconBtn('edit', 'Rename semester', rename),
+        iconBtn('plus', 'Add subject', addSubject),
+        iconBtn('trash', 'Delete semester', remove),
       ),
     ),
     subjects.length
@@ -196,8 +237,7 @@ function semesterNode(sem, state, busy) {
 }
 
 function subjectNode(sub, siblings, state, busy) {
-  const units = state.units.filter((u) => u.subject_id === sub.id)
-    .sort((a, b) => a.no - b.no);
+  const units = state.units.filter((u) => u.subject_id === sub.id).sort((a, b) => a.no - b.no);
   const declared = sub.units_declared;
 
   const rename = async () => {
@@ -205,30 +245,23 @@ function subjectNode(sub, siblings, state, busy) {
     if (!name || name === sub.name) return;
     busy(() => db.updateSubject(sub.id, { name }), 'Renamed.');
   };
-
   const setCode = async () => {
     const code = await promptDialog({
-      title: `${sub.name} — course code`, label: 'Code',
-      value: sub.code ?? '', placeholder: '23MEE202',
+      title: `${sub.name} — course code`, label: 'Code', value: sub.code ?? '', placeholder: '23MEE202',
     });
     if (code == null) return;
     busy(() => db.updateSubject(sub.id, { code: code || null }), 'Saved.');
   };
-
-  // units_declared exists solely so the coverage line can be honest.
-  // Undeclared means the app says "Coverage: undeclared" rather than flattering you.
   const setDeclared = async () => {
     const v = await promptDialog({
       title: `${sub.name} — units in the syllabus`,
       label: 'Declared unit count (blank = undeclared)',
-      value: declared == null ? '' : String(declared),
-      placeholder: '5',
+      value: declared == null ? '' : String(declared), placeholder: '5',
     });
     if (v == null) return;
     const n = v === '' ? null : clampInt(v, 1, 99, sub.units_declared);
     busy(() => db.updateSubject(sub.id, { units_declared: n }), 'Saved.');
   };
-
   const remove = async () => {
     const ok = await confirmDialog({
       title: `Delete ${sub.name}?`,
@@ -237,37 +270,33 @@ function subjectNode(sub, siblings, state, busy) {
     });
     if (ok) busy(() => db.deleteSubject(sub.id), `Deleted ${sub.name}.`);
   };
-
   const addUnit = async () => {
     const nextNo = units.length ? Math.max(...units.map((u) => u.no)) + 1 : 1;
     const title = await promptDialog({
-      title: `New unit in ${sub.name}`,
-      label: `Unit ${nextNo} title`,
-      placeholder: 'Second Law and Entropy',
-      confirmLabel: 'Create',
+      title: `New unit in ${sub.name}`, label: `Unit ${nextNo} title`,
+      placeholder: 'Second Law and Entropy', confirmLabel: 'Create',
     });
     if (!title) return;
     busy(() => db.createUnit({ subjectId: sub.id, no: nextNo, title }), `Created Unit ${nextNo}.`);
   };
 
   const coverage = declared == null
-    ? el('span', { class: 'tree-meta dim' }, `${units.length}/? units · undeclared`)
-    : el('span', { class: units.length >= declared ? 'tree-meta num' : 'tree-meta num is-short' },
+    ? el('span', { class: 'tree-meta dim' }, `${units.length}/? units`)
+    : el('span', { class: units.length >= declared ? 'tree-meta' : 'tree-meta is-short' },
       `${units.length}/${declared} units`);
 
   return el('div', { class: 'tree-sub' },
     el('div', { class: 'tree-row' },
       el('span', { class: 'tree-name' }, sub.name),
-      sub.code ? el('span', { class: 'tree-code num' }, sub.code) : null,
+      sub.code ? el('span', { class: 'tree-code' }, sub.code) : null,
       coverage,
       el('span', { class: 'row-actions' },
-        moveButtons(sub, siblings, (id, position) =>
-          busy(() => db.updateSubject(id, { position }))),
-        el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: rename }, 'Rename'),
-        el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: setCode }, 'Code'),
-        el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: setDeclared }, 'Units'),
-        el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: addUnit }, '+ Unit'),
-        el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: remove, title: 'Delete subject' }, '×'),
+        moveButtons(sub, siblings, (id, position) => busy(() => db.updateSubject(id, { position }))),
+        iconBtn('edit', 'Rename subject', rename),
+        textBtn('Code', 'Set course code', setCode),
+        textBtn('Units', 'Set declared unit count', setDeclared),
+        iconBtn('plus', 'Add unit', addUnit),
+        iconBtn('trash', 'Delete subject', remove),
       ),
     ),
     units.length
@@ -278,23 +307,17 @@ function subjectNode(sub, siblings, state, busy) {
 
 function unitNode(unit, sub, busy) {
   const rename = async () => {
-    const title = await promptDialog({
-      title: `Rename Unit ${unit.no}`, label: 'Title', value: unit.title,
-    });
+    const title = await promptDialog({ title: `Rename Unit ${unit.no}`, label: 'Title', value: unit.title });
     if (!title || title === unit.title) return;
     busy(() => db.updateUnit(unit.id, { title }), 'Renamed.');
   };
-
   const renumber = async () => {
-    const v = await promptDialog({
-      title: `Renumber Unit ${unit.no}`, label: 'Unit number', value: String(unit.no),
-    });
+    const v = await promptDialog({ title: `Renumber Unit ${unit.no}`, label: 'Unit number', value: String(unit.no) });
     if (!v) return;
     const no = clampInt(v, 1, 99, unit.no);
     if (no === unit.no) return;
     busy(() => db.updateUnit(unit.id, { no }), `Now Unit ${no}.`);
   };
-
   const remove = async () => {
     const ok = await confirmDialog({
       title: `Delete Unit ${unit.no}?`,
@@ -305,25 +328,36 @@ function unitNode(unit, sub, busy) {
   };
 
   return el('div', { class: 'tree-row tree-row-unit' },
-    el('span', { class: 'tree-no num' }, String(unit.no).padStart(2, '0')),
+    el('span', { class: 'tree-no' }, String(unit.no).padStart(2, '0')),
     el('span', { class: 'tree-name' }, unit.title),
     el('span', { class: 'row-actions' },
-      el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: rename }, 'Rename'),
-      el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: renumber }, 'No.'),
-      el('button', { class: 'btn btn-sm btn-ghost', type: 'button', onclick: remove, title: 'Delete unit' }, '×'),
+      iconBtn('edit', 'Rename unit', rename),
+      textBtn('No.', 'Change unit number', renumber),
+      iconBtn('trash', 'Delete unit', remove),
     ),
   );
 }
 
-/** Up/down reordering. Swaps `position` with the neighbour. */
+function iconBtn(name, label, fn) {
+  return el('button', {
+    class: 'btn btn-sm btn-ghost btn-icon', type: 'button',
+    title: label, 'aria-label': label, onclick: fn,
+  }, icon(name, { size: 14 }));
+}
+
+function textBtn(text, label, fn) {
+  return el('button', {
+    class: 'btn btn-sm btn-ghost', type: 'button', title: label, onclick: fn,
+  }, text);
+}
+
+/** Up/down reordering. Normalises positions to the visible order. */
 function moveButtons(item, siblings, apply) {
   const ordered = siblings.slice().sort(byPosition);
   const i = ordered.findIndex((s) => s.id === item.id);
 
   const move = (delta) => {
-    const other = ordered[i + delta];
-    if (!other) return;
-    // Positions can be duplicated or all-zero; normalise to the array order.
+    if (!ordered[i + delta]) return;
     Promise.all(
       ordered.map((s, idx) => {
         const want = idx === i ? i + delta : idx === i + delta ? i : idx;
@@ -334,39 +368,63 @@ function moveButtons(item, siblings, apply) {
 
   return [
     el('button', {
-      class: 'btn btn-sm btn-ghost', type: 'button', title: 'Move up',
+      class: 'btn btn-sm btn-ghost btn-icon', type: 'button',
+      title: 'Move up', 'aria-label': 'Move up',
       disabled: i <= 0, onclick: () => move(-1),
     }, '↑'),
     el('button', {
-      class: 'btn btn-sm btn-ghost', type: 'button', title: 'Move down',
+      class: 'btn btn-sm btn-ghost btn-icon', type: 'button',
+      title: 'Move down', 'aria-label': 'Move down',
       disabled: i < 0 || i >= ordered.length - 1, onclick: () => move(1),
     }, '↓'),
   ];
 }
 
 function byPosition(a, b) {
-  return (a.position ?? 0) - (b.position ?? 0) || String(a.name ?? a.label).localeCompare(String(b.name ?? b.label));
+  return (a.position ?? 0) - (b.position ?? 0)
+    || String(a.name ?? a.label).localeCompare(String(b.name ?? b.label));
 }
 
-/** 'Semester 3' -> 's3-…'; good enough for a unique-per-user key. */
 function slugify(s) {
-  const base = String(s).toLowerCase().trim()
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const base = String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return base || `x${Date.now().toString(36)}`;
+}
+
+// ── data ────────────────────────────────────────────────────────────────────
+
+function dataSection(navigate) {
+  return el('div', {},
+    sectionHead('Trash', `Deleted cards keep their schedule and stay restorable for ${DEFAULTS.trashPurgeDays} days. After that the app hard-deletes them on the next launch — there is no scheduled job, because Remento is opened daily by definition.`),
+    el('div', { class: 'row-actions' },
+      el('button', {
+        class: 'btn', type: 'button', onclick: () => navigate('browse', { trash: true }),
+      }, icon('trash', { size: 14 }), 'Open trash'),
+    ),
+    el('hr', { class: 'divider' }),
+    sectionHead('Images', 'Card images are compressed to WebP at 1600px before they leave this device, and live in a private bucket served through signed URLs. They are referenced by an export, not included in one.'),
+  );
 }
 
 // ── account ─────────────────────────────────────────────────────────────────
 
-function accountPanel() {
-  return el('section', { class: 'card-panel' },
-    el('h3', { class: 'panel-title' }, 'Account'),
-    el('div', { class: 'row-actions' },
-      el('button', {
-        class: 'btn', type: 'button', onclick: () => doSignOut(),
-      }, 'Sign out'),
+function accountSection(state) {
+  return el('div', {},
+    sectionHead('Account', 'Magic link only — there is no password to lose.'),
+    el('dl', { class: 'kv' },
+      el('dt', {}, 'Signed in as'),
+      el('dd', {}, state.user?.email ?? 'unknown'),
+    ),
+    el('div', { class: 'row-actions', style: 'margin-top:24px' },
+      el('button', { class: 'btn', type: 'button', onclick: () => doSignOut() }, 'Sign out'),
     ),
     el('p', { class: 'hint', style: 'margin-top:12px' },
       'Signing out clears this device only. Your cards and schedule live in Postgres.'),
   );
 }
 
+function sectionHead(title, blurb) {
+  return el('div', { class: 'settings-section-head' },
+    el('h2', { class: 'settings-section-title' }, title),
+    blurb ? el('p', { class: 'hint' }, blurb) : null,
+  );
+}

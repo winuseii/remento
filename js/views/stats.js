@@ -11,19 +11,14 @@ import * as db from '../db.js';
 import { frontTextOf } from '../importer.js';
 
 export async function render(panel, ctx) {
-  const { state } = ctx;
+  const { state, setHeader } = ctx;
 
   const root = el('div', { class: 'wrap' });
   panel.append(root);
 
+  setHeader({ crumb: ['Stats'], actions: [el('span', { class: 'hint' }, 'Last 30 days')] });
   clear(root);
-  root.append(
-    el('div', { class: 'page-head' },
-      el('h2', { class: 'page-title' }, 'Stats'),
-      el('p', { class: 'page-sub' }, 'Last 30 days'),
-    ),
-    loadingBlock('Running the aggregates…'),
-  );
+  root.append(loadingBlock('Running the aggregates…'));
 
   try {
     const [global, tagRet, history] = await Promise.all([
@@ -34,10 +29,6 @@ export async function render(panel, ctx) {
 
     clear(root);
     root.append(
-      el('div', { class: 'page-head' },
-        el('h2', { class: 'page-title' }, 'Stats'),
-        el('p', { class: 'page-sub' }, 'Last 30 days'),
-      ),
       globalPanel(global),
       history.length ? historyPanel(history) : null,
       el('div', { class: 'subject-panels' }),

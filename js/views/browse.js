@@ -10,6 +10,7 @@ import { frontTextOf, CARD_TYPES } from '../importer.js';
 import { renderFront, renderBack } from '../card-render.js';
 import { editCard } from '../card-editor.js';
 import { isLeech } from '../scheduler.js';
+import { icon } from '../icons.js';
 
 const PAGE_SIZE = 50;
 
@@ -27,21 +28,21 @@ const COLUMNS = [
 ];
 
 export async function render(panel, ctx) {
-  const { state, onStateChange } = ctx;
+  const { state, onStateChange, setHeader, args } = ctx;
 
-  const root = el('div', { class: 'wrap' });
+  const root = el('div', { class: 'wrap browse-root' });
   panel.append(root);
 
   const q = {
-    search: '',
+    search: args?.search ?? '',
     subjectId: state.focus.subjectId ?? null,
     unitId: null,
     type: '',
     importance: '',
     tag: '',
-    starred: false,
+    starred: Boolean(args?.starred),
     suspended: null,
-    trash: false,
+    trash: Boolean(args?.trash),
     sort: 'updated_at',
     dir: 'desc',
     page: 0,
@@ -167,7 +168,9 @@ export async function render(panel, ctx) {
     };
 
     bar.append(el('section', { class: 'card-panel filter-bar' },
-      search,
+      el('div', { class: 'search-wrap' },
+        el('span', { class: 'search-icon', 'aria-hidden': 'true' }, icon('search', { size: 16 })),
+        search),
       el('div', { class: 'filter-row' },
         subSel, unitSel, typeSel, impSel,
         toggle('★ Starred', q.starred, () => { q.starred = !q.starred; }),
@@ -202,6 +205,9 @@ export async function render(panel, ctx) {
           class: [c.num ? 'num' : '', c.sort ? 'is-sortable' : '', active ? 'is-active' : '']
             .filter(Boolean).join(' '),
           style: c.width ? `width:${c.width}` : null,
+          scope: 'col',
+          // aria-sort is how a screen reader learns the table is ordered at all.
+          'aria-sort': c.sort ? (active ? (q.dir === 'asc' ? 'ascending' : 'descending') : 'none') : null,
         }, c.label, active ? (q.dir === 'asc' ? ' ↑' : ' ↓') : '');
         if (c.sort) {
           th.addEventListener('click', () => {
@@ -243,14 +249,18 @@ export async function render(panel, ctx) {
     const star = el('button', {
       class: `star-btn ${card.starred ? 'is-on' : ''}`.trim(), type: 'button',
       title: card.starred ? 'Unstar' : 'Star',
-    }, card.starred ? '★' : '☆');
+      'aria-label': card.starred ? 'Unstar this card' : 'Star this card',
+      'aria-pressed': String(Boolean(card.starred)),
+    }, icon('star', { size: 14 }));
+    star.classList.toggle('is-filled', Boolean(card.starred));
     star.addEventListener('click', async (e) => {
       e.stopPropagation();
       try {
         await db.updateCards([card.id], { starred: !card.starred });
         card.starred = !card.starred;
-        star.textContent = card.starred ? '★' : '☆';
         star.classList.toggle('is-on', card.starred);
+        star.classList.toggle('is-filled', card.starred);
+        star.setAttribute('aria-pressed', String(card.starred));
       } catch (err) { toastError('Could not star', err); }
     });
 
@@ -263,7 +273,12 @@ export async function render(panel, ctx) {
     });
 
     const tr = el('tr', {
-      class: [card.suspended ? 'is-suspended' : '', isLeech(card) ? 'is-leech' : ''].filter(Boolean).join(' '),
+      class: [
+        card.suspended ? 'is-suspended' : '',
+        isLeech(card) ? 'is-leech' : '',
+        selected.has(card.id) ? 'is-selected' : '',
+      ].filter(Boolean).join(' '),
+      'aria-expanded': 'false',
     },
       state.editMode ? el('td', { class: 'col-pick' }, pick) : null,
       el('td', {}, star),
@@ -289,12 +304,12 @@ export async function render(panel, ctx) {
   function rowActions(card) {
     const actions = [];
     if (q.trash) {
-      actions.push(btn('Restore', async () => {
+      actions.push(btn(icon('restore', { size: 14 }), async () => {
         await db.restoreCards([card.id]);
         toast('Restored with its schedule intact.', 'ok');
         load();
       }));
-      actions.push(btn('×', async () => {
+      actions.push(btn(icon('trash', { size: 14 }), async () => {
         const ok = await confirmDialog({
           title: 'Delete permanently?',
           message: 'This card and its review history go for good. There is no undo.',
@@ -306,11 +321,11 @@ export async function render(panel, ctx) {
         load();
       }, 'Delete permanently'));
     } else if (state.editMode) {
-      actions.push(btn('✎', async () => {
+      actions.push(btn(icon('edit', { size: 14 }), async () => {
         const saved = await editCard(card, { structure: state });
         if (saved) { Object.assign(card, saved); load(); }
       }, 'Edit'));
-      actions.push(btn('×', async () => {
+      actions.push(btn(icon('trash', { size: 14 }), async () => {
         await db.softDeleteCards([card.id]);
         toast('Moved to trash. Restorable for 10 days.', 'ok');
         load();
@@ -320,7 +335,11 @@ export async function render(panel, ctx) {
   }
 
   function btn(label, fn, title) {
-    const b = el('button', { class: 'btn btn-sm btn-ghost', type: 'button', title: title ?? label }, label);
+    const b = el('button', {
+      class: 'btn btn-sm btn-ghost btn-icon', type: 'button',
+      title: title ?? (typeof label === 'string' ? label : ''),
+      'aria-label': title ?? (typeof label === 'string' ? label : 'Action'),
+    }, label);
     b.addEventListener('click', async (e) => {
       e.stopPropagation();
       b.disabled = true;
@@ -332,8 +351,16 @@ export async function render(panel, ctx) {
   /** Click a row to see the whole card, rendered exactly as Drill draws it. */
   function toggleExpand(tr, card) {
     const next = tr.nextElementSibling;
-    if (next?.classList.contains('row-expanded')) { next.remove(); return; }
-    for (const open of tableBox.querySelectorAll('.row-expanded')) open.remove();
+    if (next?.classList.contains('row-expanded')) {
+      next.remove();
+      tr.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    for (const open of tableBox.querySelectorAll('.row-expanded')) {
+      open.previousElementSibling?.setAttribute('aria-expanded', 'false');
+      open.remove();
+    }
+    tr.setAttribute('aria-expanded', 'true');
 
     const colspan = tr.children.length;
     const cell = el('td', { colspan: String(colspan) },
@@ -456,14 +483,14 @@ export async function render(panel, ctx) {
 
   function draw() {
     clear(root);
-    root.append(
-      el('div', { class: 'page-head' },
-        el('h2', { class: 'page-title' }, q.trash ? 'Browse · Trash' : 'Browse'),
-        el('p', { class: 'page-sub' },
-          state.editMode ? 'Edit mode on' : 'Read-only — turn on Edit to change anything'),
-      ),
-      bar, tableBox,
-    );
+    setHeader({
+      crumb: [q.trash ? 'Trash' : 'All cards'],
+      actions: [
+        el('span', { class: 'hint' },
+          state.editMode ? 'Editing' : 'Read-only'),
+      ],
+    });
+    root.append(bar, tableBox);
     drawBar();
     drawTable();
   }

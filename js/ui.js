@@ -186,16 +186,35 @@ export function openModal({ title, body, actions = [], wide = false, onDone } = 
   clear(root);
   root.hidden = false;
 
+  // Where focus was before the dialog opened, so it can go back there.
+  const restoreTo = document.activeElement;
+
   let settled = false;
   const finish = (value) => {
     if (settled) return;
     settled = true;
     root.hidden = true;
     clear(root);
-    document.removeEventListener('keydown', onKey);
+    document.removeEventListener('keydown', onKey, true);
+    restoreTo?.focus?.();
     onDone?.(value);
   };
-  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); finish(null); } };
+
+  const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
+  const onKey = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); finish(null); return; }
+    if (e.key !== 'Tab') return;
+
+    // Trap. Without this, tabbing walks out of the dialog and into the page
+    // behind it, which for a screen reader means the dialog silently ends.
+    const items = [...root.querySelectorAll(FOCUSABLE)].filter((n) => n.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
 
   const foot = el('div', { class: 'modal-foot' },
     actions.map((a) => el('button', {
@@ -216,7 +235,7 @@ export function openModal({ title, body, actions = [], wide = false, onDone } = 
 
   root.append(modal);
   root.addEventListener('click', (e) => { if (e.target === root) finish(null); });
-  document.addEventListener('keydown', onKey);
+  document.addEventListener('keydown', onKey, true);
   (modal.querySelector('input, textarea, select, .btn-primary') ?? modal).focus?.();
 
   return { close: () => finish(null) };
