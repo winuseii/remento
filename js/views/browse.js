@@ -14,17 +14,19 @@ import { icon } from '../icons.js';
 
 const PAGE_SIZE = 50;
 
+// Front has no width, so with table-layout:fixed it takes everything the
+// other columns do not claim — which is what makes it readable.
 const COLUMNS = [
-  { key: 'star', label: '', sort: 'starred', width: '28px' },
+  { key: 'star', label: '', sort: 'starred', width: '36px' },
   { key: 'front', label: 'Front', sort: null },
-  { key: 'type', label: 'Type', sort: 'type' },
-  { key: 'unit', label: 'Unit', sort: 'unit_id' },
-  { key: 'tags', label: 'Tags', sort: null },
-  { key: 'due', label: 'Due', sort: 'due', num: true },
-  { key: 'ivl', label: 'Ivl', sort: 'ivl', num: true },
-  { key: 'reps', label: 'Reps', sort: 'reps', num: true },
-  { key: 'lapses', label: 'Lapses', sort: 'lapses', num: true },
-  { key: 'retention', label: 'Ret', sort: null, num: true },
+  { key: 'type', label: 'Type', sort: 'type', width: '74px' },
+  { key: 'unit', label: 'Unit', sort: 'unit_id', width: '48px' },
+  { key: 'tags', label: 'Tags', sort: null, width: '118px' },
+  { key: 'due', label: 'Due', sort: 'due', num: true, width: '76px' },
+  { key: 'ivl', label: 'Ivl', sort: 'ivl', num: true, width: '58px' },
+  { key: 'reps', label: 'Reps', sort: 'reps', num: true, width: '52px' },
+  { key: 'lapses', label: 'Lapses', sort: 'lapses', num: true, width: '64px' },
+  { key: 'retention', label: 'Ret', sort: null, num: true, width: '56px' },
 ];
 
 export async function render(panel, ctx) {
@@ -198,7 +200,7 @@ export async function render(panel, ctx) {
     }
 
     const head = el('tr', {},
-      state.editMode ? el('th', { class: 'col-pick' }, selectAllBox()) : null,
+      state.editMode ? el('th', { class: 'col-pick', style: 'width:38px' }, selectAllBox()) : null,
       COLUMNS.map((c) => {
         const active = c.sort && q.sort === c.sort;
         const th = el('th', {
@@ -219,7 +221,7 @@ export async function render(panel, ctx) {
         }
         return th;
       }),
-      el('th', { class: 'col-actions' }),
+      el('th', { class: 'col-actions', style: 'width:76px' }),
     );
 
     const body = el('tbody', {}, rows.map(cardRow));
@@ -288,13 +290,13 @@ export async function render(panel, ctx) {
       ),
       el('td', { class: 'col-type' }, card.type),
       el('td', { class: 'col-unit num' }, unit ? String(unit.no) : '—'),
-      el('td', { class: 'col-tags' }, (card.tags ?? []).slice(0, 3).map((t) => el('span', { class: 'tag' }, t))),
+      el('td', { class: 'col-tags' }, (card.tags ?? []).slice(0, 2).map((t) => el('span', { class: 'tag' }, t))),
       el('td', { class: 'num' }, q.trash ? '—' : fmtDue(card.due)),
       el('td', { class: 'num' }, fmtInterval(card.ivl)),
       el('td', { class: 'num' }, String(card.reps ?? 0)),
       el('td', { class: `num ${isLeech(card) ? 'is-bad' : ''}`.trim() }, String(card.lapses ?? 0)),
       el('td', { class: 'num' }, ret?.reviews ? `${Math.round(ret.pct)}%` : '—'),
-      el('td', { class: 'col-actions' }, rowActions(card)),
+      el('td', { class: 'col-actions', style: 'width:76px' }, rowActions(card)),
     );
 
     tr.addEventListener('click', () => toggleExpand(tr, card));

@@ -268,6 +268,44 @@ export function shuffle(arr) {
   return a;
 }
 
+/**
+ * Due and total counts per subject and per unit, in one pass.
+ * The drill dashboard needs "what is waiting where" before you pick, and
+ * one query beats one per subject.
+ */
+export async function workload() {
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = unwrap(
+    await supabase.from(T.cards).select('subject_id, unit_id, due, reps, suspended')
+      .is('deleted_at', null).eq('suspended', false),
+  ) ?? [];
+
+  const bySubject = new Map();
+  const byUnit = new Map();
+  let due = 0;
+  let fresh = 0;
+
+  for (const r of rows) {
+    const isDue = String(r.due) <= today;
+    const isNew = (r.reps ?? 0) === 0;
+    if (isDue) due += 1;
+    if (isNew) fresh += 1;
+
+    const s = bySubject.get(r.subject_id) ?? { total: 0, due: 0, fresh: 0 };
+    s.total += 1;
+    if (isDue) s.due += 1;
+    if (isNew) s.fresh += 1;
+    bySubject.set(r.subject_id, s);
+
+    const u = byUnit.get(r.unit_id) ?? { total: 0, due: 0 };
+    u.total += 1;
+    if (isDue) u.due += 1;
+    byUnit.set(r.unit_id, u);
+  }
+
+  return { bySubject, byUnit, total: rows.length, due, fresh };
+}
+
 /** How many reviews and new cards have already been done today. */
 export async function todayCounts() {
   const uid = await userId();

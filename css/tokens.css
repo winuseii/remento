@@ -1,165 +1,149 @@
 /* ===========================================================================
    REMENTO — DESIGN TOKENS
-   "Modern Scholarly Instrument"
 
    Dark only. There is no light theme and no automatic switching.
 
-   Every visual value in the application resolves through this file. If a
-   component needs a number that is not here, the question is whether the
-   scale is wrong — not whether to hardcode it.
+   TYPE — second pass. The first used Newsreader + IBM Plex Sans, which read
+   thin and floaty: a light literary serif over a mechanical sans, both set
+   large on a lot of empty space. This set has more weight and more grip:
 
-   Three families, two superfamilies:
-     serif  Newsreader      study prompts, editorial headings
-     sans   IBM Plex Sans   UI, answers, controls, settings
-     mono   IBM Plex Mono   metadata, counts, intervals, tags, tables
+     serif  Source Serif 4    academic-press sturdiness, not literary airiness
+     sans   Instrument Sans   slightly narrow, modern, more character than Plex
+     mono   JetBrains Mono    the most legible of the data faces at 11-13px
 
-   Plex Sans and Plex Mono are the same superfamily, so the interface reads
-   as one voice and costs one extra font request rather than two.
+   Sizes came down and weights went up. Text that is merely large is not
+   hierarchy; contrast between sizes is, and it leaves room for content.
    =========================================================================== */
 
 :root {
   /* ── colour: ground and structure ──────────────────────────────────────
-     Four surface levels, used semantically:
-       0  page            1  working surface
-       2  interactive     3  floating (modal, toast, palette)          */
+     Five surface levels now. The redesign's first pass had panels with no
+     fill at all, which is what made every screen read as empty — there was
+     nothing for content to sit ON.                                       */
   --bg:        #0B0C0E;
-  --surface:   #111317;
-  --surface-2: #171A1F;
-  --surface-3: #1D2127;
+  --surface:   #101216;   /* panel fill */
+  --surface-2: #15181D;   /* raised: rows, inputs, hover */
+  --surface-3: #1B1F25;   /* interactive: active row, toast */
+  --surface-4: #232830;   /* floating: modal, palette */
 
-  --line:      #242830;   /* structural hairline */
-  --line-2:    #343A44;   /* emphasis border, control outline */
+  --line:      #21252C;   /* structural hairline */
+  --line-2:    #2F343D;   /* panel border */
+  --line-3:    #414852;   /* emphasis, control outline */
 
   /* ── colour: text ──────────────────────────────────────────────────── */
-  --tx:   #F0EEE9;        /* primary — questions, answers, values */
-  --tx-2: #A7AAA4;        /* secondary — supporting prose */
-  --tx-3: #70757D;        /* tertiary — labels, meta, placeholders */
+  --tx:   #F2F0EC;
+  --tx-2: #ADB1AC;
+  --tx-3: #767B83;
+  --tx-4: #545962;   /* faintest: disabled, watermarks */
 
-  /* ── colour: brand ─────────────────────────────────────────────────────
-     Scarlet is rare on purpose. It means: active, primary, current,
-     important — and destructive only where genuinely destructive.
-     It does not decorate.                                              */
+  /* ── colour: brand ─────────────────────────────────────────────────── */
   --sc:     #EF3B42;
   --sc-hi:  #FF6268;
   --sc-dim: #7F2429;
   --sc-bg:  #291013;
 
-  /* ── colour: grades ────────────────────────────────────────────────────
-     Also serve as the semantic state set, which is separate from the
-     brand accent: again=error, hard=warning, good=success, easy=info. */
+  /* ── colour: grades / semantic state ───────────────────────────────── */
   --g-again: #F2555A;
-  --g-hard:  #D9822B;
+  --g-hard:  #E0912F;
   --g-good:  #3FB27F;
   --g-easy:  #4B8BD4;
 
-  /* Tints, for selected and suggested states. Derived, never invented. */
-  --g-again-bg: color-mix(in srgb, var(--g-again) 12%, transparent);
-  --g-hard-bg:  color-mix(in srgb, var(--g-hard)  12%, transparent);
-  --g-good-bg:  color-mix(in srgb, var(--g-good)  12%, transparent);
-  --g-easy-bg:  color-mix(in srgb, var(--g-easy)  12%, transparent);
+  --g-again-bg: color-mix(in srgb, var(--g-again) 14%, transparent);
+  --g-hard-bg:  color-mix(in srgb, var(--g-hard)  14%, transparent);
+  --g-good-bg:  color-mix(in srgb, var(--g-good)  14%, transparent);
+  --g-easy-bg:  color-mix(in srgb, var(--g-easy)  14%, transparent);
 
   /* ── type: families ────────────────────────────────────────────────── */
-  --serif: 'Newsreader', 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  --sans:  'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
-  --mono:  'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --serif: 'Source Serif 4', 'Newsreader', Georgia, serif;
+  --sans:  'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+  --mono:  'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  /* ── type: study scale (serif, fluid) ──────────────────────────────────
-     The question is the most important text in the product. It scales
-     with the viewport rather than stepping at a breakpoint, because it
-     is read for hours and 500 cards in a row.                          */
-  --fs-question:  clamp(26px, 1.35rem + 1.35vw, 44px);
-  --fs-question-sm: clamp(22px, 1.2rem + .9vw, 30px);  /* browse expand, dense contexts */
-  --fs-answer:    clamp(15.5px, .95rem + .18vw, 17.5px);
-  --fs-answer-lg: 19px;                                 /* numerical values */
+  /* ── type: study scale ─────────────────────────────────────────────────
+     The question came down from 44px. At that size on a wide column it read
+     as a pull-quote with nothing around it; this is a question you answer
+     500 times, and it wants to sit closer to its answer.                 */
+  --fs-question:    clamp(23px, 1.15rem + .85vw, 31px);
+  --fs-question-sm: 20px;
+  --fs-answer:      clamp(15px, .92rem + .12vw, 16.5px);
+  --fs-answer-lg:   19px;
 
-  /* ── type: interface scale (sans) ──────────────────────────────────── */
-  --fs-display: clamp(30px, 1.5rem + 1.3vw, 42px);  /* stat numbers */
-  --fs-h1:      clamp(21px, 1.1rem + .7vw, 27px);   /* screen titles */
-  --fs-h2:      18px;                                /* section headings */
-  --fs-lead:    15.5px;                              /* subject names, list rows */
-  --fs-body:    14.5px;
+  /* ── type: interface scale ─────────────────────────────────────────── */
+  --fs-display: clamp(26px, 1.3rem + 1vw, 34px);   /* stat numbers */
+  --fs-h1:      clamp(19px, 1rem + .55vw, 23px);
+  --fs-h2:      16.5px;
+  --fs-lead:    15px;
+  --fs-body:    14px;
   --fs-small:   13px;
   --fs-micro:   12px;
 
-  /* ── type: technical scale (mono) ──────────────────────────────────── */
-  --fs-data:    12.5px;   /* table cells, intervals, counts */
-  --fs-label:   10.5px;   /* uppercase labels */
-  --fs-key:     10px;     /* keyboard hints */
+  /* ── type: technical scale ─────────────────────────────────────────── */
+  --fs-data:  12.5px;
+  --fs-label: 10.5px;
+  --fs-key:   10px;
 
   /* ── type: metrics ─────────────────────────────────────────────────── */
-  --lh-tight: 1.2;
-  --lh-head:  1.28;
+  --lh-tight: 1.18;
+  --lh-head:  1.3;
   --lh-snug:  1.45;
-  --lh-body:  1.62;
-  --lh-read:  1.75;   /* answer bodies — long-session comfort */
+  --lh-body:  1.6;
+  --lh-read:  1.72;
 
-  --ls-tight: -.021em; /* large serif */
-  --ls-head:  -.012em; /* sans headings */
-  --ls-label:  .12em;  /* uppercase mono labels */
-  --ls-brand:  .2em;
+  --ls-tight: -.018em;
+  --ls-head:  -.011em;
+  --ls-label:  .1em;
+  --ls-brand:  .16em;
 
   --fw-normal: 400;
   --fw-medium: 500;
   --fw-semi:   600;
+  --fw-bold:   700;
 
-  /* Reading measure. The drill column is set to this, not to a pixel box. */
-  --measure:      68ch;
-  --measure-tight: 58ch;
+  --measure:       66ch;
+  --measure-tight: 56ch;
 
-  /* ── space ─────────────────────────────────────────────────────────────
-     A 4px base. --density scales the gaps a screen actually uses, so
-     Drill can breathe and Browse can be tight without either inventing
-     its own numbers.                                                   */
+  /* ── space ─────────────────────────────────────────────────────────── */
   --sp-0: 2px;
   --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
   --sp-5: 20px;  --sp-6: 24px;  --sp-7: 32px;  --sp-8: 40px;
-  --sp-9: 56px;  --sp-10: 72px; --sp-11: 96px; --sp-12: 128px;
+  --sp-9: 52px;  --sp-10: 64px; --sp-11: 80px; --sp-12: 104px;
 
   --density: 1;
 
-  /* ── shape ─────────────────────────────────────────────────────────────
-     Restrained. Full rounding is reserved for things whose shape means
-     something: toggles, status dots, avatars.                          */
+  /* ── shape ─────────────────────────────────────────────────────────── */
   --r-xs: 3px;
-  --r-sm: 4px;
-  --r:    6px;
-  --r-lg: 10px;
+  --r-sm: 5px;
+  --r:    7px;
+  --r-lg: 11px;
   --r-full: 999px;
 
   /* ── controls ──────────────────────────────────────────────────────── */
-  --tap:        44px;   /* accessibility floor, never go under */
-  --tap-lg:     48px;   /* major touch actions */
-  --ctl-sm:     30px;
-  --ctl:        36px;
-  --ctl-lg:     44px;
-  --border:     1px;
-  --border-2:   1.5px;
+  --tap:    44px;
+  --tap-lg: 48px;
+  --ctl-sm: 30px;
+  --ctl:    36px;
+  --ctl-lg: 42px;
+  --border:   1px;
+  --border-2: 1.5px;
 
   /* ── layout ────────────────────────────────────────────────────────── */
-  --sidebar:      240px;
-  --sidebar-slim: 64px;
-  --header:       56px;
-  --navbar:       58px;   /* mobile bottom nav, before safe area */
-  --content-max:  1180px;
-  --read-max:     740px;  /* drill column ceiling */
+  --sidebar:     236px;
+  --header:      56px;
+  --navbar:      58px;
+  --content-max: 1220px;
+  --read-max:    760px;
 
-  /* ── elevation ─────────────────────────────────────────────────────────
-     Shadows only where something genuinely floats. Everything else is a
-     surface step or a hairline.                                        */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, .3);
+  /* ── elevation ─────────────────────────────────────────────────────── */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .35);
   --shadow-2: 0 8px 24px -6px rgba(0, 0, 0, .5);
-  --shadow-3: 0 20px 56px -12px rgba(0, 0, 0, .62);
+  --shadow-3: 0 22px 60px -14px rgba(0, 0, 0, .66);
 
-  /* ── motion ────────────────────────────────────────────────────────────
-     Fast, intentional, quiet. Nothing in everyday use runs past 320ms.  */
+  /* ── motion ────────────────────────────────────────────────────────── */
   --t-micro: 120ms;
   --t-fast:  170ms;
   --t-med:   240ms;
   --t-slow:  320ms;
-
   --ease:     cubic-bezier(.4, 0, .2, 1);
   --ease-out: cubic-bezier(.16, 1, .3, 1);
-  --ease-in:  cubic-bezier(.4, 0, 1, 1);
 
   /* ── focus ─────────────────────────────────────────────────────────── */
   --focus-w: 2px;
@@ -174,25 +158,17 @@
   --z-palette: 90;
 }
 
-/* ── density per screen ───────────────────────────────────────────────────
-   Applied on the view root. Intentional difference, not drift. */
-.d-low    { --density: 1.3; }   /* drill */
-.d-normal { --density: 1; }     /* subject, import, stats */
-.d-high   { --density: .8; }    /* browse */
+.d-low    { --density: 1.2; }
+.d-normal { --density: 1; }
+.d-high   { --density: .85; }
 
-/* ── tablet and below ─────────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  :root {
-    --header: 52px;
-    --measure: 100%;
-  }
+  :root { --header: 52px; --measure: 100%; }
 }
 
-/* ── phone ────────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   :root {
-    --fs-h1: 20px;
-    --fs-display: 28px;
-    --sp-9: 40px; --sp-10: 48px; --sp-11: 64px; --sp-12: 80px;
+    --fs-display: 26px;
+    --sp-9: 40px; --sp-10: 48px; --sp-11: 60px; --sp-12: 72px;
   }
 }

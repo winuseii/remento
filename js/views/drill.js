@@ -14,11 +14,12 @@ import {
 } from '../scheduler.js';
 import { renderFront, renderBack } from '../card-render.js';
 import { editCard } from '../card-editor.js';
+import { icon } from '../icons.js';
 
 const MODES = [
-  { key: 'drill', label: 'Drill', blurb: 'Cards that are due. Advances the schedule.' },
-  { key: 'cram', label: 'Cram', blurb: 'Everything, due or not, shuffled. Leaves due dates untouched.' },
-  { key: 'weak', label: 'Weak', blurb: 'Leeches and starred cards. Advances the schedule.' },
+  { key: 'drill', label: 'Drill', short: 'Due cards, schedules' },
+  { key: 'cram', label: 'Cram', short: 'Everything, no schedule' },
+  { key: 'weak', label: 'Weak', short: 'Leeches and starred' },
 ];
 
 export async function render(panel, ctx) {
@@ -49,6 +50,7 @@ export async function render(panel, ctx) {
     clear(root);
 
     if (!state.subjects.length) {
+      setHeader({ crumb: ['Drill'] });
       root.append(el('div', { class: 'empty' },
         el('p', { class: 'empty-title' }, 'Nothing to drill yet'),
         el('p', {}, 'Create a semester and a subject in Settings, then import some cards.'),
@@ -56,82 +58,203 @@ export async function render(panel, ctx) {
       return;
     }
 
-    const modeRow = el('div', { class: 'mode-row' },
+    // Always a real subject. "All subjects in this semester" was an option
+    // nobody wants: an exam is one subject, and a queue mixed across syllabi
+    // makes the interval previews mean nothing.
+    if (!setup.subjectId || !state.subjects.some((x) => x.id === setup.subjectId)) {
+      setup.subjectId = state.subjects[0].id;
+      setup.semesterId = state.subjects[0].semester_id;
+      setup.unitId = null;
+    }
+    setHeader({ crumb: ['Drill'], actions: [] });
+
+    const statsRow = el('div', { class: 'stats-row' });
+    const cta = el('div', { class: 'dash-cta' });
+    const subjects = el('div', {}, loadingBlock('Counting what is waiting...'));
+
+    root.append(el('div', { class: 'dash' },
+      el('section', { class: 'dash-hero' },
+        el('div', { class: 'dash-greet' },
+          el('h1', { class: 'dash-title' }, greeting()),
+          el('span', { class: 'dash-date' }, longDate()),
+        ),
+        statsRow, cta,
+      ),
+      el('section', { class: 'card-panel' },
+        el('h2', { class: 'panel-title' }, 'What is waiting'),
+        subjects,
+      ),
+      el('section', { class: 'card-panel' },
+        el('h2', { class: 'panel-title' }, 'Session'),
+        modeRow(),
+        el('div', { class: 'setup-grid', style: 'margin-top:16px' },
+          labelled('Unit', unitSelect()),
+          labelled('Session size', sizeInput()),
+        ),
+      ),
+    ));
+
+    try {
+      const [work, done] = await Promise.all([db.workload(), db.todayCounts()]);
+      paintStats(statsRow, cta, work, done);
+      paintSubjects(subjects, work);
+    } catch (err) {
+      clear(subjects);
+      subjects.append(errorBlock(err, () => drawSetup()));
+    }
+  }
+
+  function greeting() {
+    const h = new Date().getHours();
+    if (h < 5) return 'Still up';
+    if (h < 12) return 'Good morning';
+    if (h < 18) return 'Good afternoon';
+    return 'Good evening';
+  }
+
+  function longDate() {
+    return new Date().toLocaleDateString(undefined, {
+      weekday: 'long', day: 'numeric', month: 'long',
+    });
+  }
+
+  function labelled(label, control) {
+    return el('label', { class: 'field' }, el('span', { class: 'label' }, label), control);
+  }
+
+  function tile(n, label, kind, foot) {
+    return el('div', { class: kind ? `stat stat-${kind}` : 'stat' },
+      el('div', { class: 'stat-n num' }, String(n)),
+      el('div', { class: 'stat-label' }, label),
+      foot ? el('div', { class: 'stat-foot' }, foot) : null,
+    );
+  }
+
+  function paintStats(statsRow, cta, work, done) {
+    clear(statsRow);
+    clear(cta);
+
+    const settings = state.settings ?? {};
+    const revLeft = Math.max(0, (settings.reviewsPerDay ?? 0) - done.reviews);
+    const newLeft = Math.max(0, (settings.newPerDay ?? 0) - done.newCards);
+
+    statsRow.append(
+      tile(work.due, 'due now', work.due ? 'accent' : 'good',
+        work.due ? 'across every subject' : 'queue is clear'),
+      tile(done.total, 'done today', '', `${done.reviews} scheduled`),
+      tile(revLeft, 'reviews left', revLeft ? '' : 'warn', `cap ${settings.reviewsPerDay ?? '-'}/day`),
+      tile(newLeft, 'new left', newLeft ? '' : 'warn', `cap ${settings.newPerDay ?? '-'}/day`),
+    );
+
+    const subject = state.subjects.find((x) => x.id === setup.subjectId);
+    const scoped = setup.unitId
+      ? (work.byUnit.get(setup.unitId)?.due ?? 0)
+      : (work.bySubject.get(setup.subjectId)?.due ?? 0);
+
+    const start = el('button', { class: 'btn btn-primary btn-lg', type: 'button' },
+      scoped ? `Start \u00b7 ${pluralise(Math.min(scoped, setup.size), 'card')}` : 'Start session');
+    start.addEventListener('click', () => startSession(start));
+    cta.append(start);
+
+    if (!scoped && setup.mode === 'drill') {
+      cta.append(el('span', { class: 'hint' },
+        `Nothing due in ${subject?.name ?? 'this subject'} right now. Cram drills it anyway.`));
+    }
+  }
+
+  /** Every subject, and the units inside the one you have chosen. */
+  function paintSubjects(host, work) {
+    clear(host);
+    const list = el('div', { class: 'rec-list' });
+
+    for (const sub of state.subjects) {
+      const w = work.bySubject.get(sub.id) ?? { total: 0, due: 0, fresh: 0 };
+      const active = sub.id === setup.subjectId;
+
+      const row = el('button', { class: 'rec', type: 'button', 'aria-pressed': String(active) },
+        el('span', { class: 'nav-icon' }, icon('subject', { size: 16 })),
+        el('span', { class: 'rec-main' },
+          el('span', { class: 'rec-title' }, sub.name),
+          el('span', { class: 'rec-sub' },
+            [sub.code, `${w.total} cards`, w.fresh ? `${w.fresh} new` : null]
+              .filter(Boolean).join('  \u00b7  ')),
+        ),
+        active ? el('span', { class: 'badge badge-imp' }, 'selected') : null,
+        el('span', { class: w.due ? 'rec-due' : 'rec-due is-clear' }, w.due ? `${w.due} due` : '-'),
+      );
+      row.addEventListener('click', () => {
+        setup.subjectId = sub.id;
+        setup.semesterId = sub.semester_id;
+        setup.unitId = null;
+        drawSetup();
+      });
+      list.append(row);
+
+      if (!active) continue;
+      const units = state.units.filter((u) => u.subject_id === sub.id).sort((a, b) => a.no - b.no);
+      for (const unit of units) {
+        const uw = work.byUnit.get(unit.id) ?? { total: 0, due: 0 };
+        const chosen = setup.unitId === unit.id;
+        const urow = el('button', {
+          class: 'rec', type: 'button', style: 'padding-left:44px',
+          'aria-pressed': String(chosen),
+        },
+          el('span', { class: 'rec-no' }, String(unit.no).padStart(2, '0')),
+          el('span', { class: 'rec-main' },
+            el('span', { class: 'rec-title' }, unit.title),
+            el('span', { class: 'rec-sub' }, `${uw.total} cards`),
+          ),
+          chosen ? el('span', { class: 'badge badge-imp' }, 'only this') : null,
+          el('span', { class: uw.due ? 'rec-due' : 'rec-due is-clear' }, uw.due ? `${uw.due} due` : '-'),
+        );
+        urow.addEventListener('click', () => {
+          setup.unitId = chosen ? null : unit.id;
+          drawSetup();
+        });
+        list.append(urow);
+      }
+    }
+    host.append(list);
+  }
+
+  function modeRow() {
+    return el('div', { class: 'mode-row' },
       MODES.map((m) => {
+        const on = m.key === setup.mode;
         const btn = el('button', {
-          class: m.key === setup.mode ? 'btn is-on' : 'btn btn-ghost', type: 'button',
-        }, m.label);
+          class: on ? 'btn mode-btn is-on' : 'btn mode-btn', type: 'button',
+          'aria-pressed': String(on),
+        },
+          el('span', { class: 'mode-name' }, m.label),
+          el('span', { class: 'mode-blurb' }, m.short),
+        );
         btn.addEventListener('click', () => { setup.mode = m.key; drawSetup(); });
         return btn;
       }),
     );
+  }
 
-    const semSel = el('select', { class: 'select' },
-      state.semesters.map((s) => el('option', { value: s.id, selected: s.id === setup.semesterId }, s.label)),
+  function unitSelect() {
+    const units = state.units.filter((u) => u.subject_id === setup.subjectId)
+      .sort((a, b) => a.no - b.no);
+    const sel = el('select', { class: 'select', disabled: !units.length },
+      el('option', { value: '' }, units.length ? 'Mix all units' : 'No units yet'),
+      units.map((u) => el('option', {
+        value: u.id, selected: u.id === setup.unitId,
+      }, `Unit ${String(u.no).padStart(2, '0')} - ${u.title}`)),
     );
-    semSel.addEventListener('change', () => {
-      setup.semesterId = semSel.value; setup.subjectId = null; setup.unitId = null; drawSetup();
-    });
+    sel.addEventListener('change', () => { setup.unitId = sel.value || null; drawSetup(); });
+    return sel;
+  }
 
-    const subs = state.subjects.filter((s) => s.semester_id === setup.semesterId);
-    const subSel = el('select', { class: 'select' },
-      el('option', { value: '' }, 'All subjects in this semester'),
-      subs.map((s) => el('option', { value: s.id, selected: s.id === setup.subjectId }, s.name)),
-    );
-    subSel.addEventListener('change', () => {
-      setup.subjectId = subSel.value || null; setup.unitId = null; drawSetup();
-    });
-
-    const units = state.units.filter((u) => u.subject_id === setup.subjectId).sort((a, b) => a.no - b.no);
-    const unitSel = el('select', { class: 'select' },
-      el('option', { value: '' }, units.length ? 'Mix all units' : 'All cards'),
-      units.map((u) => el('option', { value: u.id, selected: u.id === setup.unitId }, `Unit ${u.no} — ${u.title}`)),
-    );
-    unitSel.addEventListener('change', () => { setup.unitId = unitSel.value || null; drawSetup(); });
-
-    const sizeInput = el('input', {
+  function sizeInput() {
+    const input = el('input', {
       class: 'input', type: 'number', min: 1, max: 500, value: setup.size, inputmode: 'numeric',
     });
-    sizeInput.addEventListener('change', () => {
-      setup.size = Math.min(500, Math.max(1, Math.round(Number(sizeInput.value)) || 25));
+    input.addEventListener('change', () => {
+      setup.size = Math.min(500, Math.max(1, Math.round(Number(input.value)) || 25));
     });
-
-    const start = el('button', { class: 'btn btn-primary btn-block', type: 'button' }, 'Start');
-    start.addEventListener('click', () => startSession(start));
-
-    const counts = el('p', { class: 'hint setup-counts' }, ' ');
-
-    root.append(
-      el('div', { class: 'page-head' },
-        el('h2', { class: 'page-title' }, 'Drill'),
-        el('p', { class: 'page-sub' }, MODES.find((m) => m.key === setup.mode).blurb),
-      ),
-      el('section', { class: 'card-panel setup' },
-        modeRow,
-        el('div', { class: 'setup-grid' },
-          el('label', { class: 'field' }, el('span', { class: 'label' }, 'Semester'), semSel),
-          el('label', { class: 'field' }, el('span', { class: 'label' }, 'Subject'), subSel),
-          el('label', { class: 'field' }, el('span', { class: 'label' }, 'Unit'), unitSel),
-          el('label', { class: 'field' }, el('span', { class: 'label' }, 'Session size'), sizeInput),
-        ),
-        counts,
-        start,
-      ),
-    );
-
-    // Show what is waiting, without blocking the button on it.
-    try {
-      const due = await db.countCards({
-        suspended: false,
-        ...(setup.subjectId ? { subjectId: setup.subjectId } : {}),
-        ...(setup.unitId ? { unitId: setup.unitId } : {}),
-      });
-      const done = await db.todayCounts();
-      counts.textContent =
-        `${pluralise(due, 'card')} in scope · ${done.total} reviewed today`;
-    } catch (err) {
-      counts.textContent = `Could not read counts: ${err.message}`;
-    }
+    return input;
   }
 
   // ── session ───────────────────────────────────────────────────────────────
@@ -141,14 +264,9 @@ export async function render(panel, ctx) {
     button.textContent = 'Building queue…';
 
     const filters = {
-      ...(setup.subjectId ? { subjectId: setup.subjectId } : {}),
+      subjectId: setup.subjectId,
       ...(setup.unitId ? { unitId: setup.unitId } : {}),
     };
-    if (!setup.subjectId && setup.semesterId) {
-      filters.subjectIds = state.subjects
-        .filter((s) => s.semester_id === setup.semesterId).map((s) => s.id);
-      if (!filters.subjectIds.length) delete filters.subjectIds;
-    }
 
     try {
       let queue;
