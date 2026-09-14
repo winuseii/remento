@@ -1017,3 +1017,28 @@ h1, h2, h3, h4, p, dl, dd, figure, ul, ol { margin: 0; }
   }
   .spinner { animation-duration: 1.4s !important; animation-iteration-count: infinite !important; }
 }
+
+/* ── import pipeline ────────────────────────────────────────────────────── */
+.import-col { display: grid; gap: var(--sp-5); align-content: start; min-width: 0; }
+.import-preview-col { position: sticky; top: calc(var(--header) + var(--sp-5)); }
+
+.pipeline { list-style: none; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line-2); border-radius: var(--r); overflow: hidden; }
+.pipe-step { display: flex; gap: var(--sp-4); align-items: flex-start; padding: var(--sp-4); background: var(--surface-2); }
+.pipe-no {
+  flex: none; width: 22px; height: 22px; border-radius: var(--r-full);
+  display: grid; place-items: center;
+  background: var(--surface-4); border: 1px solid var(--line-3);
+  font-family: var(--mono); font-size: var(--fs-key); color: var(--tx-3);
+}
+.pipe-main { display: grid; gap: 2px; min-width: 0; }
+.pipe-title { font-size: var(--fs-small); color: var(--tx-2); }
+.pipe-desc { font-size: var(--fs-micro); color: var(--tx-4); line-height: var(--lh-snug); }
+.pipe-step.is-done .pipe-no { background: var(--g-good-bg); border-color: var(--g-good); color: var(--g-good); }
+.pipe-step.is-done .pipe-title { color: var(--tx-3); }
+.pipe-step.is-current { background: var(--sc-bg); }
+.pipe-step.is-current .pipe-no { background: var(--sc); border-color: var(--sc); color: #fff; }
+.pipe-step.is-current .pipe-title { color: var(--tx); font-weight: var(--fw-semi); }
+
+@media (max-width: 900px) {
+  .import-preview-col { position: static; }
+}

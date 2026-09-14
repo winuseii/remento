@@ -1,14 +1,17 @@
 // Stats — real aggregates, not client-side arithmetic over a blob.
 //
-// The readiness score and the review heatmap are on the deferred list and are
-// not here. Coverage is, because coverage is the number that keeps the rest
-// honest: a deck holding two of five units can look 94% learned.
+// Readiness is here, against CLAUDE.md's deferred list, because the redesign
+// brief asked for it twice. It never appears without coverage beside it:
+// §6.3 is emphatic that a deck holding two of five units can report 94%, and
+// that is the exact failure this screen exists to prevent. The review heatmap
+// is still deferred.
 
 import {
   el, clear, toastError, loadingBlock, errorBlock, pluralise, plainText,
 } from '../ui.js';
 import * as db from '../db.js';
 import { frontTextOf } from '../importer.js';
+import { readiness } from '../scheduler.js';
 
 export async function render(panel, ctx) {
   const { state, setHeader } = ctx;
@@ -164,32 +167,119 @@ function title(text) {
 async function subjectPanel(sub, state) {
   const units = state.units.filter((u) => u.subject_id === sub.id).sort((a, b) => a.no - b.no);
 
-  const [counts, maturity, ret, worst] = await Promise.all([
+  const [counts, maturity, ret, worst, all] = await Promise.all([
     db.coverageByUnit(sub.id),
     db.maturitySplit({ subjectId: sub.id }),
     db.retention({ days: 30, subjectId: sub.id }),
-    db.worstCards({ subjectId: sub.id, limit: 10 }),
+    db.worstCards({ subjectId: sub.id, limit: 8 }),
+    db.listCards({ filters: { subjectId: sub.id }, pageSize: 1000 }).then((r) => r.rows),
   ]);
+
+  const r = readiness({
+    cards: all, retentionPct: ret.pct, unitsDeclared: sub.units_declared,
+  });
 
   return el('section', { class: 'card-panel' },
     el('div', { class: 'panel-head' },
       el('h3', { class: 'panel-title' }, sub.name),
-      el('span', { class: 'page-sub' }, coverageLine(sub, units, counts)),
+      sub.code ? el('span', { class: 'page-sub' }, sub.code) : null,
     ),
+
+    // Readiness never appears without coverage beside it.
+    el('div', { class: 'readiness' },
+      el('div', { class: 'readiness-fig' },
+        el('div', {
+          class: r.honest && r.score != null ? 'readiness-n num' : 'readiness-n num is-greyed',
+        }, r.score == null ? '—' : `${r.score}%`),
+        el('div', { class: 'readiness-label' }, 'Readiness')),
+      el('div', { class: 'readiness-fig' },
+        el('div', { class: 'readiness-n num' }, coverageFigure(sub, units, counts)),
+        el('div', { class: 'readiness-label' }, 'Coverage')),
+      el('div', { class: 'readiness-fig' },
+        el('div', { class: 'readiness-n num' }, String(maturity.total)),
+        el('div', { class: 'readiness-label' }, 'Cards')),
+      el('div', { class: 'readiness-fig' },
+        el('div', { class: 'readiness-n num' }, ret.pct == null ? '—' : `${Math.round(ret.pct)}%`),
+        el('div', { class: 'readiness-label' }, 'Retention')),
+    ),
+    el('p', { class: 'readiness-caveat' }, coverageLine(sub, units, counts)),
+
+    el('hr', { class: 'divider' }),
+
+    el('div', { class: 'grid-2' },
+      maturityMeter(maturity),
+      retentionMeter(ret),
+    ),
+
+    el('h4', { class: 'panel-title', style: 'margin-top:28px' }, 'Cards per unit'),
     coverageBars(sub, units, counts),
-    el('div', { class: 'stats-row', style: 'margin-top:20px' },
-      tile(maturity.total, 'cards'),
-      tile(maturity.new, 'new'),
-      tile(maturity.learning + maturity.young, 'learning'),
-      tile(maturity.mature, 'mature', 'good'),
-      tile(ret.pct == null ? '—' : `${Math.round(ret.pct)}%`, 'retention',
-        ret.pct == null ? '' : ret.pct >= 85 ? 'good' : ret.pct >= 70 ? 'warn' : 'bad'),
-    ),
-    ret.reviews
-      ? el('p', { class: 'hint' }, `${pluralise(ret.reviews, 'scheduled review')} in the last 30 days. Cram and quiz are excluded — they are not a measurement of recall at interval.`)
-      : el('p', { class: 'hint' }, 'No scheduled reviews in the last 30 days, so retention has nothing to report.'),
+
     worst.length ? worstPanel(worst) : null,
   );
+}
+
+/** The maturity split as one stacked bar with a legend, not four loose numbers. */
+function maturityMeter(m) {
+  const total = Math.max(1, m.total);
+  const parts = [
+    ['new', m.new, 'is-neutral'],
+    ['learning', m.learning, 'is-bad'],
+    ['young', m.young, 'is-warn'],
+    ['mature', m.mature, 'is-good'],
+  ];
+
+  return el('div', { class: 'meter' },
+    el('div', { class: 'meter-head' },
+      el('span', { class: 'meter-label' }, 'Maturity'),
+      el('span', { class: 'meter-val' }, `${m.mature} of ${m.total} mature`)),
+    el('div', { class: 'meter-track' },
+      parts.map(([, n, cls]) => (n
+        ? el('span', { class: `meter-fill ${cls}`, style: `width:${(n / total) * 100}%` })
+        : null))),
+    el('div', { class: 'meter-legend' },
+      parts.map(([name, n, cls]) => el('span', { class: 'meter-key' },
+        el('span', { class: 'meter-dot', style: dotColour(cls) }),
+        `${name} ${n}`))),
+    el('p', { class: 'hint' },
+      'Mature means an interval of 21 days or more. A deck that is mostly new is a deck you have not tested yet.'),
+  );
+}
+
+function dotColour(cls) {
+  const map = {
+    'is-neutral': 'var(--tx-4)',
+    'is-bad': 'var(--g-again)',
+    'is-warn': 'var(--g-hard)',
+    'is-good': 'var(--g-good)',
+  };
+  return `background:${map[cls] ?? 'var(--tx-4)'}`;
+}
+
+function retentionMeter(ret) {
+  const pct = ret.pct ?? 0;
+  const cls = ret.pct == null ? 'is-neutral'
+    : pct >= 85 ? 'is-good' : pct >= 70 ? 'is-warn' : 'is-bad';
+
+  return el('div', { class: 'meter' },
+    el('div', { class: 'meter-head' },
+      el('span', { class: 'meter-label' }, 'Retention, last 30 days'),
+      el('span', { class: 'meter-val' }, ret.pct == null ? 'no data' : `${Math.round(pct)}%`)),
+    el('div', { class: 'meter-track' },
+      el('span', { class: `meter-fill ${cls}`, style: `width:${ret.pct == null ? 0 : pct}%` })),
+    el('div', { class: 'meter-legend' },
+      el('span', {}, ret.reviews ? `${ret.recalled} recalled of ${ret.reviews}` : 'nothing reviewed yet')),
+    el('p', { class: 'hint' },
+      ret.reviews
+        ? `${pluralise(ret.reviews, 'scheduled review')} counted. Cram is excluded — it is not a measurement of recall at interval.`
+        : 'Retention appears once these cards have been drilled on schedule.'),
+  );
+}
+
+/** Just the fraction, for the figure. The full sentence goes in the caveat. */
+function coverageFigure(sub, units, counts) {
+  if (sub.units_declared == null) return 'n/a';
+  const withCards = units.filter((u) => (counts.get(u.id) ?? 0) > 0).length;
+  return `${withCards}/${sub.units_declared}`;
 }
 
 /**

@@ -33,7 +33,9 @@ export async function render(panel, ctx) {
   };
 
   const sourceBox = el('div');
+  const destBox = el('div');
   const previewBox = el('div');
+  const rowsBox = el('div');
 
   /** The pipeline's current state, named, so the header can report it. */
   const stage = () => {
@@ -51,7 +53,13 @@ export async function render(panel, ctx) {
       actions: [el('span', { class: 'hint' },
         view.parsed ? `${view.parsed.format} · ${view.parsed.cards.length} parsed` : '')],
     });
-    root.append(sourceBox, previewBox);
+    root.append(
+      el('div', { class: 'split' },
+        el('div', { class: 'import-col' }, sourceBox, destBox),
+        el('div', { class: 'import-col import-preview-col' }, previewBox),
+      ),
+      rowsBox,
+    );
   };
 
   // ── source ────────────────────────────────────────────────────────────────
@@ -79,8 +87,10 @@ export async function render(panel, ctx) {
   parseBtn.addEventListener('click', doParse);
   clearBtn.addEventListener('click', () => {
     textarea.value = '';
-    view.parsed = null; view.plan = null;
-    draw(); renderPreview();
+    view.parsed = null;
+    view.plan = null;
+    draw();
+    renderPreview();
   });
   promptBtn.addEventListener('click', () => copyAiPrompt(view, state));
 
@@ -137,28 +147,68 @@ export async function render(panel, ctx) {
   // ── preview ───────────────────────────────────────────────────────────────
 
   function renderPreview() {
+    clear(destBox);
     clear(previewBox);
-    if (!view.parsed) return;
+    clear(rowsBox);
 
-    const { cards, errors } = view.parsed;
-    previewBox.append(destinationPanel(view, state, refreshStructure, rebuildPlan));
-
-    if (!view.dest.subjectId) {
-      previewBox.append(el('section', { class: 'card-panel' },
-        el('div', { class: 'state' }, 'Choose a subject to see what will happen to these cards.')));
+    // Before anything is pasted the right column explains the pipeline
+    // rather than sitting empty — you should be able to tell what this
+    // screen does without using it first.
+    if (!view.parsed) {
+      previewBox.append(pipelinePanel(null));
       return;
     }
 
+    const { cards, errors } = view.parsed;
+    destBox.append(destinationPanel(view, state, refreshStructure, rebuildPlan));
+
+    if (!view.dest.subjectId) {
+      previewBox.append(pipelinePanel('dest'));
+      return;
+    }
     if (!view.plan) {
-      previewBox.append(el('section', { class: 'card-panel' },
-        el('div', { class: 'state' }, el('span', { class: 'spinner' }), 'Checking for duplicates…')));
+      previewBox.append(pipelinePanel('checking'));
       rebuildPlan();
       return;
     }
 
     previewBox.append(countsPanel(view, cards, errors, () => renderPreview(), commit));
-    previewBox.append(rowsPanel(view));
-    if (errors.length) previewBox.append(errorsPanel(errors));
+    rowsBox.append(rowsPanel(view));
+    if (errors.length) rowsBox.append(errorsPanel(errors));
+  }
+
+  /**
+   * The pipeline, named, with the current step marked. Import is the one
+   * screen where knowing exactly what will happen before you confirm is
+   * the whole point, so the steps are visible from the start.
+   */
+  function pipelinePanel(at) {
+    const STEPS = [
+      ['paste', 'Paste or drop', 'JSON or the text format — Remento sniffs which.'],
+      ['dest', 'Confirm destination', 'The payload suggests; you decide. Units are never created silently.'],
+      ['checking', 'Check for duplicates', 'Matched on id first, then on front text within the subject.'],
+      ['review', 'Review and import', 'New, duplicate, update and malformed, counted before anything is written.'],
+    ];
+    const reached = at == null ? -1 : STEPS.findIndex((x) => x[0] === at);
+
+    return el('section', { class: 'card-panel' },
+      el('h2', { class: 'panel-title' }, 'How this works'),
+      el('ol', { class: 'pipeline' },
+        STEPS.map(([key, title, desc], i) => el('li', {
+          class: ['pipe-step', i < reached ? 'is-done' : '', key === at ? 'is-current' : ''].filter(Boolean).join(' '),
+        },
+          el('span', { class: 'pipe-no' }, i < reached ? '\u2713' : String(i + 1)),
+          el('span', { class: 'pipe-main' },
+            el('span', { class: 'pipe-title' }, title),
+            el('span', { class: 'pipe-desc' }, desc)),
+        )),
+      ),
+      at === 'checking' ? el('div', { class: 'state' }, el('span', { class: 'spinner' }), 'Checking…') : null,
+      at == null
+        ? el('p', { class: 'hint', style: 'margin-top:16px' },
+          'Nothing is written until you press the import button, and the whole payload lands together or not at all.')
+        : null,
+    );
   }
 
   /** Classify every parsed card against what is already in the subject. */
@@ -248,6 +298,10 @@ export async function render(panel, ctx) {
   }
 
   draw();
+  // The right column explains the pipeline before anything is pasted, so the
+  // screen is legible on arrival rather than half empty.
+  renderPreview();
+
   return {
     teardown() {
       panel.removeEventListener('dragover', onDragOver);
