@@ -231,6 +231,23 @@ function showScreen(which) {
 
 let starting = false;
 
+/**
+ * Links from PATHS's College tab open straight onto a subject, and a unit if
+ * given: `#drill?semester=s3&subject=Thermodynamics&unit=2`. The subject is
+ * matched by name, code or slug. Anything that does not match is ignored.
+ */
+function focusFromLink(q) {
+  const want = (q.get('subject') || '').trim().toLowerCase();
+  if (!want) return;
+  const sem = state.semesters.find((s) => s.slug === q.get('semester'));
+  const sub = state.subjects.find((s) => (!sem || s.semester_id === sem.id)
+    && [s.name, s.code, s.slug].some((x) => String(x || '').toLowerCase() === want));
+  if (!sub) return;
+  const no = Number(q.get('unit'));
+  const unit = no ? state.units.find((u) => u.subject_id === sub.id && u.no === no) : null;
+  state.focus = { semesterId: sub.semester_id, subjectId: sub.id, unitId: unit?.id ?? null };
+}
+
 async function startApp(session) {
   if (starting) return;
   starting = true;
@@ -251,7 +268,8 @@ async function startApp(session) {
       el('span', { class: 'user-email' }, email),
     );
 
-    const tab = (location.hash || '').replace('#', '');
+    const [tab, query = ''] = (location.hash || '').replace('#', '').split('?');
+    focusFromLink(new URLSearchParams(query));
     await showTab(VIEWS[tab] ? tab : 'drill');
 
     db.purgeTrash()
