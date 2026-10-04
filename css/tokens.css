@@ -20,33 +20,48 @@
      Five surface levels now. The redesign's first pass had panels with no
      fill at all, which is what made every screen read as empty — there was
      nothing for content to sit ON.                                       */
-  --bg:        #0B0C0E;
-  --surface:   #101216;   /* panel fill */
-  --surface-2: #15181D;   /* raised: rows, inputs, hover */
-  --surface-3: #1B1F25;   /* interactive: active row, toast */
-  --surface-4: #232830;   /* floating: modal, palette */
+  --bg:        #0C0A0B;
+  --surface:   #121014;   /* panel fill */
+  --surface-2: #1A161B;   /* raised: rows, inputs, hover */
+  --surface-3: #211C22;   /* interactive: active row, toast */
+  --surface-4: #2A232C;   /* floating: modal, palette */
 
-  --line:      #21252C;   /* structural hairline */
-  --line-2:    #2F343D;   /* panel border */
-  --line-3:    #414852;   /* emphasis, control outline */
+  --line:      #221D23;   /* structural hairline */
+  --line-2:    #302932;   /* panel border */
+  --line-3:    #433A44;   /* emphasis, control outline */
 
-  /* ── colour: text ──────────────────────────────────────────────────── */
+  /* ── colour: text ──────────────────────────────────────────────────────
+     Warm greys, not cool. --tx-3 came up from #767B83, which measured
+     4.4:1 on --surface and failed AA on the very labels it was used for. */
   --tx:   #F2F0EC;
-  --tx-2: #ADB1AC;
-  --tx-3: #767B83;
-  --tx-4: #545962;   /* faintest: disabled, watermarks */
+  --tx-2: #B3ACAF;
+  --tx-3: #8E868E;   /* clears 4.5:1 on every surface level, incl. --surface-3 */
+  --tx-4: #5A525A;   /* faintest: disabled, watermarks. Deliberately sub-AA. */
 
-  /* ── colour: brand ─────────────────────────────────────────────────── */
-  --sc:     #EF3B42;
-  --sc-hi:  #FF6268;
-  --sc-dim: #7F2429;
-  --sc-bg:  #291013;
+  /* ── colour: brand ─────────────────────────────────────────────────────
+     Dark scarlet. One accent with two jobs, because a single value cannot
+     do both on a near-black ground:
 
-  /* ── colour: grades / semantic state ───────────────────────────────── */
-  --g-again: #F2555A;
-  --g-hard:  #E0912F;
-  --g-good:  #3FB27F;
-  --g-easy:  #4B8BD4;
+       --sc     FILL. White on it is 8.1:1 — the old #EF3B42 was 3.91:1 and
+                failed AA on every primary button in the app.
+       --sc-tx  TEXT and icons on dark. 4.9:1 on --bg. The fill is only
+                2.4:1 against the ground, so it can never carry glyphs.
+
+     A filled --sc control needs --sc-edge to read as a shape at all.       */
+  --sc:      #9B1B2A;
+  --sc-hi:   #B02636;   /* hover fill — white still 6.6:1 */
+  --sc-tx:   #D94F59;   /* scarlet as text/icon on dark */
+  --sc-edge: #6E1420;   /* hairline that separates a filled control from bg */
+  --sc-dim:  #5E1119;
+  --sc-bg:   #1E0E11;
+
+  /* ── colour: grades / semantic state ───────────────────────────────────
+     Warmed to sit with the new ground, and --g-again pulled away from
+     --sc-tx so "Again" never reads as a brand element.                    */
+  --g-again: #E2565C;
+  --g-hard:  #D18A33;
+  --g-good:  #3EA97A;
+  --g-easy:  #5189CC;
 
   --g-again-bg: color-mix(in srgb, var(--g-again) 14%, transparent);
   --g-hard-bg:  color-mix(in srgb, var(--g-hard)  14%, transparent);
@@ -68,7 +83,9 @@
   --fs-answer-lg:   19px;
 
   /* ── type: interface scale ─────────────────────────────────────────── */
-  --fs-display: clamp(26px, 1.3rem + 1vw, 34px);   /* stat numbers */
+  /* Display numerals carry the Outrider trait: large, light, and allowed to
+     be the loudest thing on a panel. Weight lives in --fw-display.         */
+  --fs-display: clamp(32px, 1.5rem + 1.6vw, 46px);   /* stat numbers */
   --fs-h1:      clamp(19px, 1rem + .55vw, 23px);
   --fs-h2:      16.5px;
   --fs-lead:    15px;
@@ -88,15 +105,19 @@
   --lh-body:  1.6;
   --lh-read:  1.72;
 
-  --ls-tight: -.018em;
-  --ls-head:  -.011em;
-  --ls-label:  .1em;
-  --ls-brand:  .16em;
+  /* Micro-labels are the other Outrider trait: set wide, so a 10.5px caps
+     label reads as a deliberate rule rather than as small text.            */
+  --ls-tight:   -.02em;
+  --ls-head:    -.011em;
+  --ls-label:    .15em;
+  --ls-brand:    .2em;
+  --ls-display: -.025em;   /* large numerals tighten as they grow */
 
-  --fw-normal: 400;
-  --fw-medium: 500;
-  --fw-semi:   600;
-  --fw-bold:   700;
+  --fw-normal:  400;
+  --fw-medium:  500;
+  --fw-semi:    600;
+  --fw-bold:    700;
+  --fw-display: 400;   /* big numbers are LIGHT, not heavy */
 
   --measure:       66ch;
   --measure-tight: 56ch;

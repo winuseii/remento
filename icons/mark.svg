@@ -7,9 +7,9 @@
        survive 16px, which a brain never does: linked cards, recall confirmed.
        Geometric and precise, which is the vocabulary the rest of the app
        already speaks. -->
-  <g stroke="#EF3B42" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+  <g stroke="#D94F59" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
     <path d="M6.5 15.5 12.5 22 19 14 25.5 6.5" fill="none"/>
-    <g fill="#EF3B42" stroke="none">
+    <g fill="#D94F59" stroke="none">
       <circle cx="6.5"  cy="15.5" r="3"/>
       <circle cx="12.5" cy="22"   r="3"/>
       <circle cx="19"   cy="14"   r="2.6"/>
