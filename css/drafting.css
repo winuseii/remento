@@ -1,0 +1,119 @@
+/* ===========================================================================
+   REMENTO — THE DRAFTING TABLE
+
+   The look Remento shares with PATHS's College tab: a fine drawing grid on
+   the ground, registration marks on panels, stat tiles joined into a title
+   block, DIN lettering for labels and numbers, Cinzel for the titles.
+   Loaded after app.css, and built only from tokens.css.
+   =========================================================================== */
+
+@font-face {
+  font-family: 'Cinzel';
+  src: url('../fonts/cinzel.woff2') format('woff2');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --grid-fine: color-mix(in srgb, var(--tx) 2.2%, transparent);
+  --grid-major: color-mix(in srgb, var(--tx) 4%, transparent);
+}
+
+/* ── The ground: a drawing sheet ──────────────────────────────────────── */
+body {
+  background:
+    linear-gradient(var(--grid-major) 1px, transparent 1px) 0 0 / 120px 120px,
+    linear-gradient(90deg, var(--grid-major) 1px, transparent 1px) 0 0 / 120px 120px,
+    linear-gradient(var(--grid-fine) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, var(--grid-fine) 1px, transparent 1px) 0 0 / 24px 24px,
+    radial-gradient(1000px 600px at 75% -10%, color-mix(in srgb, var(--sc) 8%, transparent), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+.textarea, code, .kbd, .card-json { font-family: var(--code); }
+
+/* Titles carved, labels lettered. */
+.brand-word { font-family: var(--display); font-weight: 700; letter-spacing: .12em; font-size: 16px; }
+.dash-title { font-family: var(--display); font-weight: 700; letter-spacing: .03em; }
+.panel-title, .nav-group-label { letter-spacing: .16em; font-weight: var(--fw-semi); }
+
+/* ── Panels: registration marks at two corners, a ruled title ─────────── */
+.card-panel {
+  position: relative;
+  background:
+    linear-gradient(var(--line-3), var(--line-3)) 8px 8px / 10px 1px no-repeat,
+    linear-gradient(var(--line-3), var(--line-3)) 8px 8px / 1px 10px no-repeat,
+    linear-gradient(var(--line-3), var(--line-3)) calc(100% - 8px) calc(100% - 8px) / 10px 1px no-repeat,
+    linear-gradient(var(--line-3), var(--line-3)) calc(100% - 8px) calc(100% - 8px) / 1px 10px no-repeat,
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 80%, var(--surface-2)), var(--surface));
+  padding: var(--sp-5) var(--sp-6);
+}
+.card-panel > .panel-title,
+.card-panel > .panel-head {
+  margin: 0 calc(-1 * var(--sp-6)) var(--sp-4);
+  padding: 0 var(--sp-6) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+}
+.card-panel > .panel-head .panel-title { border: 0; margin: 0; padding: 0; }
+
+/* Section numbers, the way a drawing numbers its views: 01, 02 … */
+.panels { counter-reset: view; }
+.card-panel > .panel-title::before,
+.card-panel > .panel-head > .panel-title::before {
+  counter-increment: view;
+  content: counter(view, decimal-leading-zero);
+  color: var(--sc-tx);
+  margin-right: var(--sp-3);
+}
+
+/* ── Stat tiles joined into a title block ─────────────────────────────── */
+.stats-row {
+  gap: 1px; background: var(--line-2);
+  border: 1px solid var(--line-3); border-radius: var(--r-lg); overflow: hidden;
+}
+.stats-row .stat { border: 0; border-radius: 0; background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
+.stats-row .stat.stat-accent { box-shadow: inset 0 2px 0 var(--sc); }
+
+/* ── Drill: two columns on a wide screen, so the dashboard fills it ───── */
+.drill-root:has(> .dash) { max-width: var(--content-max); }
+@media (min-width: 1100px) {
+  .dash {
+    display: grid; gap: var(--sp-5); align-items: start;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    grid-template-areas: "hero wait" "sess wait" "trail wait";
+  }
+  .dash > section { margin: 0; }
+  .dash > .dash-hero { grid-area: hero; }
+  .dash > section:nth-of-type(2) { grid-area: wait; }
+  .dash > section:nth-of-type(3) { grid-area: sess; }
+  .dash > .dash-trail { grid-area: trail; }
+}
+
+/* Last 14 days: reviews per day, recalled in green */
+.trail { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: 5px; align-items: end; height: 78px; padding-bottom: 1px; border-bottom: 1px solid var(--line-2); }
+.trail i { position: relative; display: block; min-height: 3px; border-radius: 2px 2px 0 0; background: var(--surface-3); overflow: hidden; }
+.trail i b { position: absolute; left: 0; right: 0; bottom: 0; background: var(--g-good); opacity: .85; }
+.trail i.is-today { outline: 1px solid var(--tx-3); outline-offset: 1px; }
+.trail-foot { display: flex; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-2); font-family: var(--mono); font-size: var(--fs-label); letter-spacing: .08em; text-transform: uppercase; color: var(--tx-3); }
+.trail-foot span:nth-child(2) { color: var(--tx-2); text-transform: none; letter-spacing: .02em; font-size: var(--fs-data); }
+.dash-hero {
+  position: relative;
+  border-top: 3px solid var(--sc) !important;
+}
+
+/* Rows in lists read as a table: a hairline rule, tabular numbers. */
+.rec-list { border-radius: var(--r); }
+.rec-due, .rec-val { font-weight: var(--fw-semi); }
+
+/* ── Inside PATHS (College → Cards): PATHS has the navigation ─────────── */
+.embedded .sidebar,
+.embedded .tabbar,
+.embedded .header-menu { display: none !important; }
+.embedded .app { grid-template-columns: 1fr; }
+.embedded .header { min-height: 44px; padding: 0 var(--sp-5); }
+.embedded .wrap { padding-top: var(--sp-5); }
+.embedded body { padding-bottom: 0; }
+@media (max-width: 900px) {
+  .embedded .panels { padding-bottom: 0; }
+}

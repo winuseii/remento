@@ -17,17 +17,16 @@
 <link rel="icon" href="icons/icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
-<!-- Instrument Sans carries the interface, JetBrains Mono the technical
-     layer, Source Serif 4 the study surface. -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<!-- Type is the drafting table's, shared with PATHS (see css/tokens.css):
+     one bundled face (Cinzel), the rest already on the device. -->
+<link rel="preload" href="fonts/cinzel.woff2" as="font" type="font/woff2" crossorigin>
 
 <!-- KaTeX stylesheet. The renderer is imported as an ES module in js/ui.js. -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0/dist/katex.min.css">
 
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/drafting.css">
 </head>
 <body>
 

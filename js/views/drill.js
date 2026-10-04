@@ -14,6 +14,7 @@ import {
 } from '../scheduler.js';
 import { renderFront, renderBack } from '../card-render.js';
 import { editCard } from '../card-editor.js';
+import { tellPaths } from '../embed.js';
 import { icon } from '../icons.js';
 
 const MODES = [
@@ -71,6 +72,7 @@ export async function render(panel, ctx) {
     const statsRow = el('div', { class: 'stats-row' });
     const cta = el('div', { class: 'dash-cta' });
     const subjects = el('div', {}, loadingBlock('Counting what is waiting...'));
+    const trail = el('div', {});
 
     root.append(el('div', { class: 'dash' },
       el('section', { class: 'dash-hero' },
@@ -92,7 +94,14 @@ export async function render(panel, ctx) {
           labelled('Session size', sizeInput()),
         ),
       ),
+      el('section', { class: 'card-panel dash-trail' },
+        el('h2', { class: 'panel-title' }, 'Last 14 days'),
+        trail,
+      ),
     ));
+
+    // The rhythm strip is a nicety: if it cannot load, it simply is not there.
+    db.reviewsOverTime(14).then((days) => paintTrail(trail, days)).catch(() => trail.closest('section')?.remove());
 
     try {
       const [work, done] = await Promise.all([db.workload(), db.todayCounts()]);
@@ -102,6 +111,31 @@ export async function render(panel, ctx) {
       clear(subjects);
       subjects.append(errorBlock(err, () => drawSetup()));
     }
+  }
+
+  // Reviews per day for two weeks; the green part is what you recalled.
+  function paintTrail(box, days) {
+    clear(box);
+    const byDay = new Map(days.map((d) => [d.day, d]));
+    const list = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date(Date.now() - (13 - i) * 86400000).toISOString().slice(0, 10);
+      return { day: d, n: 0, ok: 0, ...byDay.get(d) };
+    });
+    const max = Math.max(1, ...list.map((d) => d.n));
+    const total = list.reduce((a, d) => a + d.n, 0);
+    const ok = list.reduce((a, d) => a + d.ok, 0);
+    box.append(
+      el('div', { class: 'trail', role: 'img', 'aria-label': `${total} reviews in the last 14 days` },
+        list.map((d, i) => el('i', {
+          class: i === 13 ? 'is-today' : '',
+          style: `height:${Math.max(4, Math.round((d.n / max) * 100))}%`,
+          title: `${d.day}: ${d.n} reviews, ${d.ok} recalled`,
+        }, el('b', { style: `height:${d.n ? Math.round((d.ok / d.n) * 100) : 0}%` })))),
+      el('div', { class: 'trail-foot' },
+        el('span', {}, '14 days ago'),
+        el('span', {}, total ? `${total} reviews · ${Math.round((100 * ok) / total)}% recalled` : 'No reviews yet'),
+        el('span', {}, 'today')),
+    );
   }
 
   function greeting() {
@@ -516,6 +550,8 @@ export async function render(panel, ctx) {
 
     try {
       await db.recordReview({ card, grade: g, next, mode: session.mode, fraction, ms, ivlBefore });
+      // Inside PATHS, a saved review counts for the daily goal (drill mode only: cram writes nothing).
+      tellPaths('graded', { grade: g, mode: session.mode });
       if (next?.isLeech) toast('That card is now a leech — Weak mode collects it.', 'warn');
     } catch (err) {
       toastError('Review not saved', err);

@@ -9,7 +9,7 @@
 // Bump this on every deploy that changes the shell. The activate handler
 // deletes every cache that is not the current name, so a bump is what
 // guarantees a returning visitor gets the new CSS instead of last week's.
-const VERSION = 'v3-scarlet';
+const VERSION = 'v4-drafting';
 const SHELL = `remento-shell-${VERSION}`;
 
 /** Everything needed to paint the frame. No data, no user content. */
@@ -19,7 +19,11 @@ const SHELL_FILES = [
   './manifest.webmanifest',
   './css/tokens.css',
   './css/app.css',
+  './css/drafting.css',
+  './fonts/cinzel.woff2',
   './js/app.js',
+  './js/embed.js',
+  './js/subject-match.js',
   './js/icons.js',
   './js/command-palette.js',
   './js/views/subject.js',
