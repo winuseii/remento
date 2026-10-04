@@ -10,6 +10,8 @@ import {
 } from '../ui.js';
 import { parse, summarise, frontTextOf, planImport, cardToRow } from '../importer.js';
 import * as db from '../db.js';
+import { tellPaths } from '../embed.js';
+import { matchSubject } from '../subject-match.js';
 
 const TYPE_LABEL = {
   qa: 'Q&A', formula: 'Formula', list: 'List',
@@ -283,6 +285,7 @@ export async function render(panel, ctx) {
       if (res.inserted) parts.push(`${pluralise(res.inserted, 'card')} added`);
       if (res.updated) parts.push(`${pluralise(res.updated, 'card')} updated`);
       toast(`${parts.join(', ')}.`, 'ok');
+      tellPaths('imported', { count: (res.inserted || 0) + (res.updated || 0) });
 
       textarea.value = '';
       view.parsed = null;
@@ -301,6 +304,12 @@ export async function render(panel, ctx) {
   // The right column explains the pipeline before anything is pasted, so the
   // screen is legible on arrival rather than half empty.
   renderPreview();
+
+  // Cards handed over by PATHS (its Game Master made them): straight to the preview.
+  if (typeof ctx.args?.text === 'string' && ctx.args.text.trim()) {
+    textarea.value = ctx.args.text;
+    doParse();
+  }
 
   return {
     teardown() {
@@ -325,7 +334,7 @@ function seedDestination(view, state) {
   d.semesterId = sem?.id ?? d.semesterId ?? state.semesters[0]?.id ?? null;
 
   const subs = state.subjects.filter((s) => s.semester_id === d.semesterId);
-  const sub = subs.find((s) => s.name.toLowerCase() === String(t.subject).toLowerCase())
+  const sub = matchSubject(subs, { name: t.subject, code: t.subjectCode })
     ?? subs.find((s) => s.id === d.subjectId);
   d.subjectId = sub?.id ?? null;
 

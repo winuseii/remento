@@ -5,6 +5,8 @@ import { $, $$, clear, toast, toastError, errorBlock, primeMath, el } from './ui
 import { signIn, signOut, getSession, onAuthChange, scrubAuthFromUrl } from './auth.js';
 import { icon } from './icons.js';
 import * as db from './db.js';
+import { EMBEDDED, tellPaths, fromPaths } from './embed.js';
+import { matchSubject } from './subject-match.js';
 
 // ── global state ────────────────────────────────────────────────────────────
 
@@ -120,6 +122,7 @@ export async function showTab(tab, args = null) {
 
   try { history.replaceState(null, '', `#${tab}`); } catch { /* file:// */ }
   $('#main')?.scrollTo?.({ top: 0 });
+  tellPaths('tab', { tab });
 }
 
 // ── chrome wiring ───────────────────────────────────────────────────────────
@@ -233,15 +236,15 @@ let starting = false;
 
 /**
  * Links from PATHS's College tab open straight onto a subject, and a unit if
- * given: `#drill?semester=s3&subject=Thermodynamics&unit=2`. The subject is
- * matched by name, code or slug. Anything that does not match is ignored.
+ * given: `#drill?semester=s3&subject=Engineering+Thermodynamics&code=23MEE202&unit=2`.
+ * The subject is found by code, name or slug (see subject-match.js).
+ * Anything that does not match is ignored.
  */
 function focusFromLink(q) {
-  const want = (q.get('subject') || '').trim().toLowerCase();
-  if (!want) return;
+  const want = { name: q.get('subject') || '', code: q.get('code') || '' };
+  if (!want.name && !want.code) return;
   const sem = state.semesters.find((s) => s.slug === q.get('semester'));
-  const sub = state.subjects.find((s) => (!sem || s.semester_id === sem.id)
-    && [s.name, s.code, s.slug].some((x) => String(x || '').toLowerCase() === want));
+  const sub = matchSubject(state.subjects.filter((s) => !sem || s.semester_id === sem.id), want);
   if (!sub) return;
   const no = Number(q.get('unit'));
   const unit = no ? state.units.find((u) => u.subject_id === sub.id && u.no === no) : null;
@@ -271,6 +274,7 @@ async function startApp(session) {
     const [tab, query = ''] = (location.hash || '').replace('#', '').split('?');
     focusFromLink(new URLSearchParams(query));
     await showTab(VIEWS[tab] ? tab : 'drill');
+    tellPaths('ready');
 
     db.purgeTrash()
       .then((n) => { if (n) console.info(`Purged ${n} card(s) from trash.`); })
@@ -326,6 +330,13 @@ export async function doSignOut() {
 async function boot() {
   wireSignIn();
   wireChrome();
+  // Inside PATHS: its College tab picks the tab, and hands over the
+  // Game Master's cards for Import.
+  fromPaths((m) => {
+    if (!state.user) return;
+    if (m.type === 'paths:tab' && VIEWS[m.tab]) showTab(m.tab);
+    else if (m.type === 'paths:import' && typeof m.text === 'string') showTab('import', { text: m.text });
+  });
 
   onAuthChange((event, session) => {
     if (event === 'SIGNED_IN' && session && !state.user) { scrubAuthFromUrl(); startApp(session); }
@@ -346,7 +357,9 @@ async function boot() {
 }
 
 // The service worker caches the app shell only — never card data.
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+// The offline shell is for the installed app on the web. Served by PATHS on
+// this laptop, files must always be fresh.
+if ('serviceWorker' in navigator && location.protocol.startsWith('http') && !EMBEDDED && location.hostname !== 'localhost') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').catch((e) => console.warn('SW failed:', e));
   });
