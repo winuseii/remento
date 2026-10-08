@@ -1,5 +1,10 @@
 # Remento
 
+> **Archived (October 2026).** Remento now lives inside PATHS: its card types, importer (JSON and
+> text formats, re-import by `id`), sanitiser, cram mode and leech flagging were ported there, and
+> each course's cards are a PATHS deck. This repo stays as the record, and its GitHub Pages site
+> stays up until the PATHS phone app has its own cards.
+
 A spaced-repetition flashcard system built for my own mechanical engineering coursework, because
 the existing ones do not handle formulas, enumerated lists with counts, or the traps attached to
 each equation — which is most of what an engineering exam actually tests.
